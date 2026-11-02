@@ -477,6 +477,7 @@ const I18N = {
   'piece.materials': ['วัสดุที่ใช้จริง', 'សម្ភារៈប្រើពិតប្រាកដ', 'အမှန်သုံးသည့်ပစ္စည်း'],
   'piece.noMat':     ['ขั้นตอนนี้ปกติไม่ต้องบันทึกวัสดุ เพิ่มได้ถ้าใช้', 'ធម្មតាមិនបាច់កត់សម្ភារៈ បន្ថែមបានបើប្រើ', 'ပုံမှန် ပစ္စည်းမှတ်ရန်မလို၊ သုံးလျှင် ထည့်နိုင်သည်'],
   'piece.note':      ['หมายเหตุ', 'កំណត់សម្គាល់', 'မှတ်ချက်'],
+  'piece.draft':     ['กู้คืนค่าที่พิมพ์ค้างไว้แล้ว', 'បានស្តារទិន្នន័យដែលបានវាយទុក', 'ရိုက်ထားသည်များ ပြန်ယူပြီး'],
   'piece.notePh':    ['เช่น ปัญหาที่พบ อุณหภูมิ ความชื้น', 'ឧ. បញ្ហា សីតុណ្ហភាព សំណើម', 'ဥပမာ ပြဿနာ၊ အပူချိန်၊ စိုထိုင်းဆ'],
   'piece.photo':     ['รูปหน้างาน (ถ้ามี)', 'រូបថត (បើមាន)', 'ဓာတ်ပုံ (ရှိလျှင်)'],
   'piece.finish':    ['บันทึกเสร็จ', 'កត់ត្រាថារួច', 'ပြီးကြောင်း မှတ်တမ်းတင်'],
@@ -523,6 +524,7 @@ const I18N = {
   't.notFound':    ['ไม่พบรหัสชิ้นงาน {code}', 'រកមិនឃើញលេខកូដ {code}', 'ပစ္စည်းကုဒ် {code} မတွေ့ပါ'],
   't.saveFail':    ['บันทึกไม่สำเร็จ:', 'រក្សាទុកមិនបាន៖', 'သိမ်းဆည်း၍ မရပါ:'],
   't.locked':      ['ล็อกแล้ว', 'បានចាក់សោ', 'သော့ခတ်ပြီး'],
+  't.stale':       ['งานนี้ถูกบันทึกหรือยกเลิกจากอีกเครื่องแล้ว จอแสดงข้อมูลล่าสุดให้', 'ការងារនេះត្រូវបានកត់ត្រា ឬបោះបង់ពីឧបករណ៍ផ្សេងរួចហើយ', 'ဤအလုပ်ကို အခြားစက်မှ မှတ်တမ်းတင် သို့မဟုတ် ပယ်ဖျက်ပြီးပါပြီ'],
   't.autoLock':    ['ล็อกอัตโนมัติเพราะไม่มีการใช้งาน', 'ចាក់សោស្វ័យប្រវត្តិ ព្រោះគ្មានការប្រើ', 'အသုံးမပြုသဖြင့် အလိုအလျောက် သော့ခတ်ပြီး'],
   't.reloaded':    ['โหลดข้อมูลล่าสุดแล้ว', 'បានផ្ទុកទិន្នន័យថ្មី', 'နောက်ဆုံးဒေတာ ပြန်ဖွင့်ပြီး'],
   // ผลงานของฉัน
@@ -669,7 +671,8 @@ function demoLoad(){ try { const j = localStorage.getItem(DEMO_KEY); return j ? 
 async function fetchAll(table, source){
   let out = [], from = 0; const size = 1000;
   for(;;){
-    const { data, error } = await S.sb.from(source || table).select('*').range(from, from + size - 1);
+    // ต้องเรียงตามคีย์หลักทุกครั้ง: ถ้าไม่เรียง Postgres ไม่รับประกันลำดับ หน้าถัดไปอาจซ้ำหรือข้ามแถว
+    const { data, error } = await S.sb.from(source || table).select('*').order(table==='settings' ? 'key' : 'id').range(from, from + size - 1);
     if(error) throw error;
     out = out.concat(data); if(data.length < size) break; from += size;
   }
@@ -706,6 +709,22 @@ async function dbUpdate(table, id, patch){
   if(S.mode==='supabase'){ const { error } = await S.sb.from(table).update(patch).eq('id', id); if(error) throw error }
   const r = S.data[table].find(x => x.id===id); if(r) Object.assign(r, patch);
   if(S.mode==='demo') demoSave();
+}
+// อัปเดตเฉพาะเมื่อแถวยังอยู่ในสถานะที่คาดไว้ (เช่น status = in_progress) · คืน false ถ้าอีกเครื่องเปลี่ยนไปก่อนแล้ว
+async function dbUpdateIf(table, id, expect, patch){
+  if(S.mode==='supabase'){
+    let q = S.sb.from(table).update(patch).eq('id', id);
+    for(const [k, v] of Object.entries(expect)) q = q.eq(k, v);
+    const { data, error } = await q.select('id');
+    if(error) throw error;
+    if(!data || !data.length) return false;
+  } else {
+    const cur = S.data[table].find(x => x.id===id);
+    if(!cur || Object.entries(expect).some(([k, v]) => cur[k] !== v)) return false;
+  }
+  const r = S.data[table].find(x => x.id===id); if(r) Object.assign(r, patch);
+  if(S.mode==='demo') demoSave();
+  return true;
 }
 async function saveSetting(key, value){
   if(S.mode==='supabase'){ const { error } = await S.sb.from('settings').upsert({key, value}); if(error) throw error }
@@ -756,6 +775,31 @@ function reindex(){
     state: {}
   };
   for(const p of D.pieces) M.state[p.id] = computeState(p);
+  M.alloc = allocateWork(D.step_logs);
+}
+/* ช่างคนเดียวทำหลายชิ้นซ้อนเวลากัน (เช่น พ่นเจลโค้ต 4 ชิ้นในรอบเดียว) ห้ามนับเวลาซ้ำ:
+   ช่วงที่ทำพร้อมกัน k ชิ้น แต่ละชิ้นได้ 1/k ของช่วงนั้น → รวมทุกชิ้น = เวลาที่คนนั้นทำงานจริง */
+function allocateWork(logs){
+  const out = {}, byW = {};
+  for(const l of logs){
+    if((l.status!=='done' && l.status!=='reworked') || !l.finished_at) continue;
+    (byW[l.finished_by || l.worker_id] ||= []).push(l);
+  }
+  for(const list of Object.values(byW)){
+    const ev = [];
+    for(const l of list){
+      const a = toDate(l.started_at).getTime(), b = toDate(l.finished_at).getTime();
+      out[l.id] = 0; if(b > a) ev.push([a, 1, l.id], [b, -1, l.id]);
+    }
+    ev.sort((x, y) => x[0] - y[0] || x[1] - y[1]);   // เวลาเท่ากัน: จบก่อนเริ่ม
+    const active = new Set(); let prev = null;
+    for(const [tm, d, id] of ev){
+      if(prev !== null && active.size && tm > prev){ const share = (tm - prev) / 60000 / active.size; for(const a of active) out[a] += share }
+      if(d > 0) active.add(id); else active.delete(id);
+      prev = tm;
+    }
+  }
+  return out;
 }
 function computeState(p){
   const logs = (M.logsByPiece[p.id]||[]).slice().sort((a,b) => a.started_at < b.started_at ? -1 : 1);
@@ -800,11 +844,12 @@ function dueChip(due, complete){
   if(d <= 2) return `<span class="chip warn">${tr('due.on', {d:fDate(due)})}</span>`;
   return `<span class="chip">${tr('due.on', {d:fDate(due)})}</span>`;
 }
-function logMins(l){ return l.finished_at ? mins(l.started_at, l.finished_at) : 0 }
+function logMins(l){ return l.finished_at ? mins(l.started_at, l.finished_at) : 0 }   // เวลานาฬิกา (เริ่ม→เสร็จ)
+function workMins(l){ return M.alloc && M.alloc[l.id] != null ? M.alloc[l.id] : logMins(l) }   // เวลาทำงานของชิ้นนี้ หลังแบ่งงานซ้อน
 function stdFor(p, step){ return M.product[p.product_id]?.standard?.[step] || null }
 function logCost(l){
   let mat = 0; for(const m of l.materials||[]){ const mt = M.material[m.material_id]; if(mt) mat += num(m.qty) * num(mt.unit_cost) }
-  const m = logMins(l); return {mat, labor: m/60 * workerRate(l.finished_by || l.worker_id), mins: m};
+  const m = workMins(l); return {mat, labor: m/60 * workerRate(l.finished_by || l.worker_id), mins: m};
 }
 function stdCost(productId, route){
   const pr = M.product[productId]; let mat = 0, m = 0;
@@ -1027,7 +1072,7 @@ function defaultMat(step){
 function matRow(r, step, layers){
   const id = r.material_id || defaultMat(step), mat = M.material[id];
   let unit = mat?.unit, val = r.qty;
-  if(mat?.unit==='kg' && val != null && num(val) < 1){ unit = 'g'; val = Math.round(num(val)*1000) }
+  if(mat?.unit==='kg' && val != null && num(val) < 1){ unit = 'g'; val = +(num(val)*1000).toFixed(2) }
   else if(val != null) val = +num(val).toFixed(3);
   return `<div class="mrow">${layers ? `<span class="layer-no">${tr('layer.prefix')} </span>` : ''}
     <select class="m-mat" aria-label="${tr('aria.mat')}" data-step="${step}">${matOptions(id, step)}</select>
@@ -1046,7 +1091,7 @@ function readMatRows(root){
     layer++;
     const id = r.querySelector('.m-mat').value, q = parseFloat(r.querySelector('.m-qty').value), u = r.querySelector('.m-unit').value;
     if(!id || !(q > 0)) continue;
-    const o = {material_id:id, qty: +(u==='g' ? q/1000 : q).toFixed(4)};
+    const o = {material_id:id, qty: +(u==='g' ? q/1000 : q).toFixed(6)};   // เก็บละเอียดถึงมิลลิกรัม
     if(layers) o.layer = layer;
     rows.push(o);
   }
@@ -1058,6 +1103,15 @@ function matsText(list){
 }
 function seg(name, opts, sel, cls='', on=''){
   return `<div class="seg ${cls}" data-name="${name}" ${on ? `data-on="${on}"` : ''} role="group">${opts.map(([v,l]) => `<button type="button" data-act="seg" data-v="${esc(v)}" aria-pressed="${String(v)===String(sel)}">${esc(l)}</button>`).join('')}</div>`;
+}
+// ร่างที่พิมพ์ค้างไว้ในใบงาน (วัสดุ หมายเหตุ จำนวนเที่ยว) เก็บในเครื่องนี้ จนกว่าจะบันทึกเสร็จหรือยกเลิก
+const draftKey = id => 'draft:' + id;
+function loadDraft(id){ try { return JSON.parse(lsGet(draftKey(id)) || 'null') } catch(e){ return null } }
+function clearDraft(id){ try { localStorage.removeItem('mi:' + draftKey(id)) } catch(e){} }
+function saveDraft(){
+  const panel = document.querySelector('[data-draft]'); if(!panel) return;
+  const ed = panel.querySelector('.mat-editor[data-key="log"]');
+  lsSet(draftKey(panel.dataset.draft), JSON.stringify({mats: ed ? readMatRows(ed) : [], note: $('#logNote')?.value || '', passes: readSeg('passes')}));
 }
 function readSeg(name){ const b = document.querySelector(`.seg[data-name="${name}"] button[aria-pressed="true"]`); return b ? b.dataset.v : null }
 function routeTrack(p, s){
@@ -1084,9 +1138,11 @@ function shPiece(id){
       <div><button class="btn btn-primary btn-xl" data-act="startStep" data-id="${p.id}">${tr('piece.start')}</button></div></div>`;
   } else if(s.status==='working'){
     const st = STEPS[s.step], sd = stdFor(p, s.step) || {};
-    const rows = (sd.materials && sd.materials.length) ? sd.materials : (st.cats.some(c => c!=='other') ? [{}] : []);
-    const pv = sd.passes || st.defPass;
-    action = `<div class="panel action"><span class="eyebrow">${tr('floor.working')}</span>
+    const dr = loadDraft(s.log.id);
+    const rows = dr && dr.mats && dr.mats.length ? dr.mats : (sd.materials && sd.materials.length) ? sd.materials : (st.cats.some(c => c!=='other') ? [{}] : []);
+    const pv = (dr && dr.passes) || sd.passes || st.defPass;
+    action = `<div class="panel action" data-draft="${s.log.id}"><span class="eyebrow">${tr('floor.working')}</span>
+      ${dr ? `<span class="chip info" style="align-self:flex-start">${tr('piece.draft')}</span>` : ''}
       <h3><span class="stepno">${st.no}</span>${stepName(s.step)}${thSub(s.step)}</h3>
       <div class="ink2">${tr('piece.startedBy', {name:esc(wName(s.log.worker_id)), time:fDT(s.log.started_at), elapsed:`<b data-since="${s.log.started_at}">${fMins(mins(s.log.started_at, nowISO()))}</b>`})}</div>
       ${stdLine(p, s.step)}
@@ -1094,7 +1150,7 @@ function shPiece(id){
       <div class="field"><span class="flabel">${st.layers ? tr('piece.layers') : tr('piece.materials')}</span>
         ${rows.length || st.cats.some(c => c!=='other') ? '' : `<span class="muted" style="font-size:.88rem">${tr('piece.noMat')}</span>`}
         ${matEditor(s.step, rows, 'log')}</div>
-      <div class="field"><label for="logNote">${tr('piece.note')}</label><textarea id="logNote" class="input" placeholder="${tr('piece.notePh')}"></textarea></div>
+      <div class="field"><label for="logNote">${tr('piece.note')}</label><textarea id="logNote" class="input" placeholder="${tr('piece.notePh')}">${esc(dr?.note || '')}</textarea></div>
       <div class="field"><label for="logPhoto">${tr('piece.photo')}</label><input id="logPhoto" type="file" accept="image/*" capture="environment" class="input"></div>
       <div class="row"><button class="btn btn-primary btn-xl" data-act="finishStep" data-id="${s.log.id}">${tr('piece.finish')}</button>
         <button class="btn btn-ghost" data-act="cancelStep" data-id="${s.log.id}">${tr('piece.cancel')}</button></div></div>`;
@@ -1130,7 +1186,7 @@ function shMyWork(wid){
   const logs = S.data.step_logs.filter(l => (l.finished_by || l.worker_id)===wid && l.finished_at && (l.status==='done' || l.status==='reworked')).sort((a,b) => a.finished_at < b.finished_at ? 1 : -1);
   const t0 = new Date(); t0.setHours(0,0,0,0); const w0 = t0.getTime() - 6*86400000;
   const agg = from => { const xs = logs.filter(l => toDate(l.finished_at) >= from); let m=0, sm=0, am=0;
-    for(const l of xs){ const d = logMins(l); m += d; const p = M.piece[l.piece_id]; const sd = p && stdFor(p, l.step); if(sd && num(sd.minutes)){ sm += num(sd.minutes); am += d } }
+    for(const l of xs){ const d = workMins(l); m += d; const p = M.piece[l.piece_id]; const sd = p && stdFor(p, l.step); if(sd && num(sd.minutes)){ sm += num(sd.minutes); am += d } }
     return {n:xs.length, m, eff: am ? sm/am*100 : null, rework: xs.filter(l => l.status==='reworked').length} };
   const td = agg(t0), wk = agg(new Date(w0));
   const active = S.data.step_logs.filter(l => l.worker_id===wid && l.status==='in_progress');
@@ -1144,7 +1200,7 @@ function shMyWork(wid){
     <section class="section"><h3>${tr('my.recent')}</h3>
     ${logs.length ? `<div class="table-wrap"><table><thead><tr><th>${tr('col.doneAt')}</th><th>${tr('col.piece')}</th><th>${tr('col.step')}</th><th class="r">${tr('col.time')}</th><th class="r">${tr('col.std')}</th><th>${tr('col.status')}</th></tr></thead><tbody>
       ${logs.slice(0,30).map(l => { const p = M.piece[l.piece_id]; const sd = p && stdFor(p, l.step);
-        return `<tr class="click" data-act="openPiece" data-id="${l.piece_id}"><td>${fDT(l.finished_at)}</td><td class="mono">${esc(p?.code)}</td><td>${esc(stepLabel(l.step))}</td><td class="r num">${fMins(logMins(l))}</td><td class="r num muted">${sd ? fMins(num(sd.minutes)) : '–'}</td><td><span class="chip ${LOG_CHIP[l.status]}">${tr('st.'+l.status)}</span></td></tr>` }).join('')}
+        return `<tr class="click" data-act="openPiece" data-id="${l.piece_id}"><td>${fDT(l.finished_at)}</td><td class="mono">${esc(p?.code)}</td><td>${esc(stepLabel(l.step))}</td><td class="r num">${fMins(workMins(l))}</td><td class="r num muted">${sd ? fMins(num(sd.minutes)) : '–'}</td><td><span class="chip ${LOG_CHIP[l.status]}">${tr('st.'+l.status)}</span></td></tr>` }).join('')}
     </tbody></table></div>` : `<div class="empty">${tr('my.none')}</div>`}</section></div>`;
 }
 
@@ -1333,7 +1389,7 @@ function vDash(){
   const logsR = S.data.step_logs.filter(l => (l.status==='done' || l.status==='reworked') && inR(l.finished_at));
   const perW = {}, perS = {}, perM = {};
   for(const l of logsR){
-    const wid = l.finished_by || l.worker_id, d = logMins(l), p = M.piece[l.piece_id], sd = p && stdFor(p, l.step);
+    const wid = l.finished_by || l.worker_id, d = workMins(l), p = M.piece[l.piece_id], sd = p && stdFor(p, l.step);
     const a = perW[wid] ||= {n:0, m:0, sm:0, am:0, rw:0, pcs:new Set(), last:''};
     a.n++; a.m += d; a.pcs.add(l.piece_id); if(l.status==='reworked') a.rw++; if(l.finished_at > a.last) a.last = l.finished_at;
     if(sd && num(sd.minutes)){ a.sm += num(sd.minutes); a.am += d }
@@ -1379,7 +1435,7 @@ function vDash(){
       ${open.sort((a,b) => (a.o.due_date||'9') < (b.o.due_date||'9') ? -1 : 1).map(({o,s}) => `<tr class="click" data-act="openOrder" data-id="${o.id}"><td class="mono">${esc(o.order_no)}</td><td>${esc(o.customer)}</td><td>${dueChip(o.due_date, false)}</td><td><div class="bar"><span style="width:${s.target ? s.done/s.target*100 : 0}%"></span></div></td><td class="r num">${s.done}/${s.target}</td></tr>`).join('')}
       </tbody></table></div>` : `<div class="empty">ทุกออเดอร์ครบแล้ว</div>`}</section>
   </div>
-  <section class="section"><div class="sec-head"><h3>ผลงานรายคน</h3><span class="muted">ประสิทธิภาพ = เวลามาตรฐาน ÷ เวลาจริง · มากกว่า 100% คือเร็วกว่ามาตรฐาน</span></div>
+  <section class="section"><div class="sec-head"><h3>ผลงานรายคน</h3><span class="muted">ประสิทธิภาพ = เวลามาตรฐาน ÷ เวลาจริง · มากกว่า 100% คือเร็วกว่ามาตรฐาน · ทำหลายชิ้นพร้อมกัน ระบบแบ่งเวลาให้แต่ละชิ้นเท่ากัน ไม่นับซ้ำ</span></div>
     <div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>ตอนนี้</th><th class="r">ขั้นตอนที่เสร็จ</th><th class="r">ชิ้นงาน</th><th class="r">ชั่วโมงงาน</th><th class="r">ประสิทธิภาพ</th><th class="r">ถูกสั่งแก้</th><th>ล่าสุด</th></tr></thead><tbody>
     ${S.data.workers.filter(w => w.active !== false && (perW[w.id] || activeNow[w.id] || w.role==='worker')).map(w => { const a = perW[w.id] || {n:0,m:0,sm:0,am:0,rw:0,pcs:new Set(),last:''}; const act = activeNow[w.id]; const eff = a.am ? a.sm/a.am*100 : null;
       return `<tr><td><b>${esc(w.name)}</b> <span class="muted">${roleName(w.role)}</span></td><td>${act ? `<span class="chip info">${esc(stepLabel(act.step))}</span>` : '<span class="muted">–</span>'}</td>
@@ -1398,7 +1454,7 @@ function vDash(){
         return `<tr><td>${esc(m?.name)}</td><td class="r num">${fQty(c.act, m?.unit)}</td><td class="r num muted">${c.std ? fQty(c.std, m?.unit) : '–'}</td>${varCell(c.act, c.std)}<td class="r num">${baht(c.act * num(m?.unit_cost))}</td></tr>` }).join('') || `<tr><td colspan="5" class="muted">ไม่มีการใช้วัสดุในช่วงนี้</td></tr>`}
       </tbody></table></div></section>
   </div>
-  <section class="section"><div class="sec-head"><h3>ต้นทุนจริงต่อชิ้น (ชิ้นที่เสร็จในช่วงนี้)</h3><span class="muted">ค่าแรงคิดจากเวลาจริง × อัตราค่าแรง · รวมงานที่ถูกสั่งแก้</span></div>
+  <section class="section"><div class="sec-head"><h3>ต้นทุนจริงต่อชิ้น (ชิ้นที่เสร็จในช่วงนี้)</h3><span class="muted">ค่าแรงคิดจากเวลาจริง × อัตราค่าแรง · รวมงานที่ถูกสั่งแก้ · เวลาที่ทำหลายชิ้นพร้อมกันแบ่งตามจำนวนชิ้น</span></div>
     ${costs.length ? `<div class="table-wrap"><table><thead><tr><th>ชิ้นงาน</th><th>สินค้า</th><th class="r">เวลารวม</th><th class="r">วัสดุ</th><th class="r">ค่าแรง</th><th class="r">รวม</th><th class="r">มาตรฐาน</th><th class="r">ต่าง</th></tr></thead><tbody>
       ${costs.map(c => `<tr class="click" data-act="openPiece" data-id="${c.p.id}"><td class="mono">${esc(c.p.code)}</td><td>${esc(M.product[c.p.product_id]?.name)}</td><td class="r num">${fMins(c.m)}</td><td class="r num">${baht(c.mat)}</td><td class="r num">${baht(c.lab)}</td><td class="r num"><b>${baht(c.tot)}</b></td><td class="r num muted">${baht(c.std)}</td>${varCell(c.tot, c.std)}</tr>`).join('')}
     </tbody></table></div>` : `<div class="empty">ยังไม่มีชิ้นงานที่เสร็จในช่วงนี้</div>`}</section>
@@ -1545,9 +1601,14 @@ const ACT = {
       const note = $('#logNote')?.value.trim() || null;
       const photoInput = $('#logPhoto');   // เก็บไว้ก่อนถามชื่อ จอจะวาดใหม่เป็นภาษาของช่างหลังใส่ PIN
       const w = await askWorker({title:trL('ask.finish'), preselect:l.worker_id}); if(!w) return;
+      const stale = async () => { await refreshPiece(l.piece_id); render(); toast(tr('t.stale'), 'bad') };
+      await refreshPiece(l.piece_id);   // อีกเครื่องอาจบันทึก/ยกเลิกงานนี้ไปแล้ว
+      if(S.data.step_logs.find(x => x.id===d.id)?.status !== 'in_progress') return stale();
       const photo = await uploadPhoto(photoInput);
-      await dbUpdate('step_logs', l.id, {status:'done', finished_at:nowISO(), finished_by:w.id, passes, materials:mats, note, photo_url:photo});
-      reindex(); render(); toast(tr('t.finished', {step:stepLabel(l.step), m:fMins(logMins(S.data.step_logs.find(x => x.id===l.id)))}));
+      const ok = await dbUpdateIf('step_logs', d.id, {status:'in_progress'}, {status:'done', finished_at:nowISO(), finished_by:w.id, passes, materials:mats, note, photo_url:photo});
+      if(!ok) return stale();
+      clearDraft(d.id);
+      reindex(); render(); toast(tr('t.finished', {step:stepLabel(l.step), m:fMins(logMins(S.data.step_logs.find(x => x.id===d.id)))}));
     });
   },
   async cancelStep(d){
@@ -1555,28 +1616,32 @@ const ACT = {
       const l = S.data.step_logs.find(x => x.id===d.id); if(!l) return;
       const w = await askWorker({title:trL('ask.cancel'), preselect:l.worker_id, sub:trL('ask.cancelSub')}); if(!w) return;
       if(w.id!==l.worker_id && ROLE_RANK[w.role] < 2){ render(); toast(tr('t.cancelOnly'), 'bad'); return }
-      await dbUpdate('step_logs', l.id, {status:'cancelled', finished_at:nowISO(), finished_by:w.id});
+      const ok = await dbUpdateIf('step_logs', d.id, {status:'in_progress'}, {status:'cancelled', finished_at:nowISO(), finished_by:w.id});
+      if(!ok){ await refreshPiece(l.piece_id); render(); toast(tr('t.stale'), 'bad'); return }
+      clearDraft(d.id);
       reindex(); render(); toast(tr('t.cancelled'));
     });
   },
   seg(d, el){
     const g = el.closest('.seg'); g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b===el)));
     if(g.dataset.on && ON[g.dataset.on]) ON[g.dataset.on](d.v);
+    if(el.closest('[data-draft]')) saveDraft();
   },
   addMatRow(d, el){
     const sel = `.mat-editor[data-step="${d.step}"]` + (d.key ? `[data-key="${d.key}"]` : '');
     const ed = el.closest('.field')?.querySelector(sel) || document.querySelector(sel);
     ed.insertAdjacentHTML('beforeend', matRow({}, d.step, ed.classList.contains('layers')));
+    if(ed.closest('[data-draft]')) saveDraft();
   },
   addItemRow(){ $('#o-items').insertAdjacentHTML('beforeend', itemRow()) },
-  delRow(d, el){ el.closest('.mrow, .irow').remove() },
+  delRow(d, el){ const inDraft = !!el.closest('[data-draft]'); el.closest('.mrow, .irow').remove(); if(inDraft) saveDraft() },
   async openQC(d){
     if(rank() < 2){ const w = await askWorker({title:trL('ask.qc'), minRank:2}); if(!w) return; startSession(w); render() }
     openSheet(shQC, d.id, d.point);
   },
   async saveQC(d){
     await guarded(async () => {
-      const p = M.piece[d.id], s = M.state[d.id];
+      const p = M.piece[d.id]; let s = M.state[d.id];
       const point = $('#qc-point').value, result = readSeg('qcres') || 'pass';
       const defect = result==='pass' ? null : readSeg('defect');
       if(result!=='pass' && !defect){ toast(tr('t.pickDefect'), 'bad'); return }
@@ -1586,12 +1651,17 @@ const ACT = {
       let insp = S.session?.worker;
       if(!insp || ROLE_RANK[insp.role] < 2){ insp = await askWorker({title:trL('ask.inspector'), minRank:2}); if(!insp) return }
       const photo = await uploadPhoto(photoInput);
+      await refreshPiece(p.id); s = M.state[d.id];   // ใช้สถานะล่าสุด (อาจมีคนเพิ่งเริ่มขั้นถัดไป)
       await dbInsert('qc_records', {id:uid(), piece_id:p.id, step:point, inspector_id:insp.id, result, defect, rework_step, note:qcNote, photo_url:photo, created_at:nowISO()});
+      // งานที่กำลังทำค้างอยู่ต้องถูกปิด (นับเป็นต้นทุน) ไม่งั้นค้าง "กำลังทำ" ตลอด หรือข้ามขั้นที่ต้องทำใหม่
+      const closeActive = l => dbUpdate('step_logs', l.id, {status:'reworked', finished_at:nowISO(), finished_by:l.worker_id});
       if(result==='rework'){
         const from = s.route.indexOf(rework_step);
-        for(const l of s.logs.filter(l => l.status==='done' && s.route.indexOf(l.step) >= from)) await dbUpdate('step_logs', l.id, {status:'reworked'});
+        for(const l of s.logs.filter(l => (l.status==='done' || l.status==='in_progress') && s.route.indexOf(l.step) >= from))
+          await (l.status==='in_progress' ? closeActive(l) : dbUpdate('step_logs', l.id, {status:'reworked'}));
       }
       if(result==='scrap'){
+        for(const l of s.logs.filter(l => l.status==='in_progress')) await closeActive(l);
         await dbUpdate('pieces', p.id, {scrapped:true, scrap_reason:defect});
         if(replace){
           const n = S.data.pieces.filter(x => x.order_id===p.order_id).length;
@@ -1710,6 +1780,7 @@ document.addEventListener('change', e => {
   if(t.matches('.m-mat')){ const m = M.material[t.value]; const u = t.closest('.mrow, .panel')?.querySelector('.m-unit'); if(u) u.innerHTML = unitOptions(m, m?.unit); if(t.id==='st-mat' && m) $('#st-cost').value = num(m.unit_cost) }
   if(t.matches('.i-prod')){ const p = M.product[t.value]; const r = t.closest('.irow').querySelector('.i-route'); if(p) r.value = p.default_route }
 });
+document.addEventListener('input', e => { if(e.target.closest('[data-draft]')) saveDraft() });
 document.addEventListener('submit', e => {
   const f = e.target; if(f.dataset.form!=='scan') return; e.preventDefault();
   const code = $('#scan').value.trim().toUpperCase(); if(!code) return;

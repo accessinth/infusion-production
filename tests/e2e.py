@@ -339,6 +339,53 @@ with sync_playwright() as p:
     pg.set_viewport_size({'width':1024, 'height':768})
     E("setLang('th'); S.session=null; S.view='floor'; closeSheet(); render()")
 
+    # ---------- ตรวจความเสี่ยง (2 พ.ย.): เวลาซ้อน, หลายเครื่อง, สถานะ, ร่าง, การดึงข้อมูล ----------
+    E("setLang('th'); S.session=null; S.view='floor'; closeSheet(); render()")
+    AW = "askWorker = async (o) => (o && o.preselect) ? S.data.workers.find(w => w.id===o.preselect) : S.data.workers.find(w => w.role==='worker' && (w.lang||'th')==='th'); 0"
+    E("window.__aw = askWorker; 0"); E(AW)
+    alloc = E("""(() => { const w = S.data.workers.find(x => x.role==='worker').id, base = Date.parse('2026-01-05T08:00:00Z'), m = 60000;
+      const mk = (a, b) => ({id:uid(), worker_id:w, finished_by:w, started_at:new Date(base+a*m).toISOString(), finished_at:new Date(base+b*m).toISOString(), status:'done'});
+      const same = [mk(0,60), mk(0,60), mk(0,60)], part = [mk(0,60), mk(30,90)], seq = [mk(0,30), mk(30,60)];
+      const r1 = allocateWork(same), r2 = allocateWork(part), r3 = allocateWork(seq);
+      return {same: same.map(l => Math.round(r1[l.id])), part: part.map(l => Math.round(r2[l.id])), seq: seq.map(l => Math.round(r3[l.id]))} })()""")
+    check('ช่างทำ 3 ชิ้นพร้อมกัน 60 นาที → ชิ้นละ 20 นาที (รวม 60 ไม่นับซ้ำ)', alloc['same'] == [20, 20, 20], str(alloc['same']))
+    check('ทำซ้อนกันบางช่วง (0–60, 30–90) → 45 + 45 = 90 นาที', alloc['part'] == [45, 45], str(alloc['part']))
+    check('ทำต่อกันไม่ซ้อน → นับเต็มแต่ละชิ้น', alloc['seq'] == [30, 30], str(alloc['seq']))
+    check('ดึงข้อมูลแบบแบ่งหน้ามีการเรียงลำดับ (กันแถวซ้ำ/หายเมื่อเกิน 1000)', '.order(' in E("fetchAll.toString()"))
+    # อีกเครื่องยกเลิกไปแล้ว แต่เครื่องนี้ยังกดบันทึกเสร็จจากจอเก่า
+    sp = E("S.data.pieces.find(p => M.state[p.id].status==='waiting' && ['S1','S3'].includes(M.state[p.id].step)).id")
+    E(f"openSheet(shPiece,'{sp}')"); pg.click('[data-act="startStep"]'); pg.wait_for_timeout(300)
+    slid = E(f"M.state['{sp}'].log.id")
+    E(f"(() => {{ const l = S.data.step_logs.find(x => x.id==='{slid}'); l.status='cancelled'; l.finished_at=new Date().toISOString(); }})()")
+    pg.click('[data-act="finishStep"]'); pg.wait_for_timeout(300)
+    check('อีกเครื่องยกเลิกงานแล้ว เครื่องนี้กดบันทึกเสร็จ → ไม่ทับ + แจ้งเตือน', E(f"S.data.step_logs.find(x => x.id==='{slid}').status") == 'cancelled'
+          and 'อีกเครื่อง' in pg.locator('#toast').inner_text(), pg.locator('#toast').inner_text())
+    # ร่างที่พิมพ์ค้างไว้รอดการรีเฟรช
+    dp = E("S.data.pieces.find(p => M.state[p.id].status==='waiting' && ['S1','S3'].includes(M.state[p.id].step)).id")
+    E(f"openSheet(shPiece,'{dp}')"); pg.click('[data-act="startStep"]'); pg.wait_for_timeout(300)
+    dlid = E(f"M.state['{dp}'].log.id")
+    pg.locator('.mat-editor[data-key="log"] .m-qty').first.fill('7.25'); pg.fill('#logNote', 'ร่างทดสอบ')
+    pg.reload(wait_until='domcontentloaded'); pg.wait_for_selector('.stepbtn'); E(AW)
+    E(f"openSheet(shPiece,'{dp}')")
+    check('รีเฟรชระหว่างกรอก → ตัวเลขและหมายเหตุที่พิมพ์ค้างไว้กลับมา', pg.locator('.mat-editor[data-key="log"] .m-qty').first.input_value() == '7.25'
+          and pg.input_value('#logNote') == 'ร่างทดสอบ' and pg.locator('[data-draft] .chip.info').count() == 1)
+    pg.click('[data-act="finishStep"]'); pg.wait_for_timeout(300)
+    check('บันทึกเสร็จแล้วล้างร่าง + เก็บค่าตามที่พิมพ์', E(f"localStorage.getItem('mi:draft:{dlid}')") is None
+          and E(f"S.data.step_logs.find(x => x.id==='{dlid}').note") == 'ร่างทดสอบ')
+    # QC สั่งแก้ย้อนหลังขณะขั้นถัดไปกำลังทำ / ตีเสียขณะกำลังทำ
+    E("S.session={worker:S.data.workers.find(w=>w.role==='supervisor'),until:Date.now()+9e6}; closeSheet(); render()")
+    rp = E("S.data.pieces.find(p => M.state[p.id].status==='waiting' && M.state[p.id].done.has('S3') && M.state[p.id].step!=='S3')?.id")
+    E(f"openSheet(shPiece,'{rp}')"); pg.click('[data-act="startStep"]'); pg.wait_for_timeout(300)
+    E(f"openSheet(shQC,'{rp}','S3')"); pg.click('.seg[data-name="qcres"] button[data-v="rework"]')
+    pg.click('.seg[data-name="defect"] button >> nth=0'); pg.select_option('#qc-rework', 'S3'); pg.click('[data-act="saveQC"]'); pg.wait_for_timeout(300)
+    check('QC สั่งแก้ขั้น 3 ขณะขั้นถัดไปกำลังทำ → ปิดงานค้าง และชิ้นงานกลับไปขั้น 3',
+          E(f"S.data.step_logs.filter(l => l.piece_id==='{rp}' && l.status==='in_progress').length") == 0 and E(f"[M.state['{rp}'].status, M.state['{rp}'].step]") == ['waiting', 'S3'])
+    xp = E("S.data.pieces.find(p => M.state[p.id].status==='working')?.id")
+    E(f"openSheet(shQC,'{xp}','S3')"); pg.click('.seg[data-name="qcres"] button[data-v="scrap"]')
+    pg.click('.seg[data-name="defect"] button >> nth=0'); pg.click('[data-act="saveQC"]'); pg.wait_for_timeout(300)
+    check('ตีชิ้นงานเสียขณะมีคนกำลังทำ → ไม่มีงานค้าง "กำลังทำ"', E(f"S.data.step_logs.filter(l => l.piece_id==='{xp}' && l.status==='in_progress').length") == 0)
+    E("askWorker = window.__aw; S.session=null; S.view='floor'; closeSheet(); render(); 0")
+
     # ---------- ขนาดจอ / ล้นจอ ----------
     def overflow(): return E("document.documentElement.scrollWidth - document.documentElement.clientWidth")
     for vw, vh, tag in [(1024,768,'tablet-land'), (768,1024,'tablet-port'), (390,844,'phone')]:
