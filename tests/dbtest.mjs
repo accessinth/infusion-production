@@ -23,9 +23,17 @@ await db.exec(`
   grant usage on schema public, auth, extensions, storage to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
   grant all on all tables in schema storage to anon, authenticated;
+`);
+// DB_EXPOSE=1 จำลองโปรเจกต์ที่เปิด "Automatically expose new tables" (ให้สิทธิ์ตารางใหม่แก่ anon/authenticated อัตโนมัติ)
+// ค่าเริ่มต้นจำลองแบบปิด (เหมือนโปรเจกต์จริง) และตัดสิทธิ์ execute ฟังก์ชันจาก PUBLIC ด้วย = กรณีเข้มที่สุด
+const EXPOSE = process.env.DB_EXPOSE === '1';
+await db.exec(EXPOSE ? `
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
+` : `
+  alter default privileges in schema public revoke execute on functions from public;
 `);
+console.log('โหมดสิทธิ์:', EXPOSE ? 'expose new tables = เปิด' : 'expose new tables = ปิด (เหมือนโปรเจกต์จริง)');
 // ทดสอบ supabase/schema.sql บน Postgres (PGlite) พร้อมจำลอง role/auth/storage แบบ Supabase
 // ใช้: cd tests && npm install && node dbtest.mjs
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
@@ -94,7 +102,11 @@ await expectErr('อัปโหลดเข้า bucket อื่นไม่�
 
 // ---- คนนอก (anon) ----
 await as('anon');
-ok('คนนอกที่ไม่ล็อกอินอ่านข้อมูลไม่ได้', (await q('select count(*)::int n from orders'))[0].n === 0 && (await q('select count(*)::int n from materials'))[0].n === 0);
+// คนนอก: ได้ 0 แถว (RLS กัน) หรือถูกปฏิเสธทั้งตาราง (ไม่มีสิทธิ์ตาราง) ก็ถือว่าผ่าน
+const anonSees = async t => { try { return (await q(`select count(*)::int n from ${t}`))[0].n; } catch (e) { return /permission denied/.test(e.message) ? 'denied' : e.message; } };
+const anonRes = await Promise.all(['orders', 'materials', 'workers', 'step_logs'].map(anonSees));
+ok('คนนอกที่ไม่ล็อกอินอ่านข้อมูลไม่ได้', anonRes.every(v => v === 0 || v === 'denied'), anonRes.join(','));
+await expectErr('คนนอกเขียนข้อมูลไม่ได้', () => q("insert into orders (order_no) values ('HACK-1')"), /permission denied|row-level security/);
 await expectErr('คนนอกอ่านรายชื่อช่างไม่ได้', () => q('select * from workers_public'), /permission denied/);
 await expectErr('คนนอกเดา PIN ไม่ได้', () => q('select verify_pin($1,$2)', [mgrWorker, '1234']), /permission denied/);
 

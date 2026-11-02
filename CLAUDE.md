@@ -36,7 +36,7 @@ build.py              สร้าง index.html จาก src/app.html
 index.html            ไฟล์ที่ GitHub Pages เสิร์ฟ (สร้างจาก build — ห้ามแก้ตรง)
 supabase/schema.sql   ตาราง, RLS, ฟังก์ชัน PIN, bucket รูป, ข้อมูลเริ่มต้น (รันซ้ำได้)
 tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 43 ข้อ (Playwright + Chrome) บนโหมดทดลอง
-tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 27 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
+tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 28 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
 ```
 
 ## คำสั่ง
@@ -44,7 +44,7 @@ tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 27 ข้อ �
 ```bash
 python3 build.py                                   # ทุกครั้งที่แก้ src/app.html
 cd tests && npm install
-node dbtest.mjs                                    # ทดสอบฐานข้อมูล (ต้องผ่าน 27/27)
+npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 28/28 ทั้งคู่)
 pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 43/43) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
 python3 -m http.server 8000                        # เปิด http://localhost:8000/index.html
 ```
@@ -106,12 +106,13 @@ python3 -m http.server 8000                        # เปิด http://localho
 - **ข้อมูลตัวอย่าง:** แก้ `seedDemo()` แล้วต้องเปลี่ยน `DEMO_KEY` (เช่น `-v3`) ไม่อย่างนั้นเครื่องที่เคยเปิดจะยังเห็นข้อมูลชุดเก่า
 - **Supabase select:** คืนได้ครั้งละไม่เกิน 1000 แถว `fetchAll()` จึงดึงแบบแบ่งหน้า
 - **ชื่อ policy:** ใน schema.sql ชื่อเป็นภาษาไทย ต้องยาวไม่เกิน 63 bytes (ตัวไทยใช้ 3 bytes ต่อตัว)
+- **สิทธิ์ตาราง:** โปรเจกต์ Supabase จริงปิด "Automatically expose new tables" ไว้ ถ้าเพิ่มตารางใหม่ต้องเพิ่ม `grant … to authenticated` เองในส่วน "สิทธิ์ระดับตาราง" ของ schema.sql ห้ามให้สิทธิ์ `anon`
 - **schema.sql ต้องรันซ้ำได้:** ใช้ `create … if not exists` / `drop policy if exists` / `on conflict do nothing`
 - **ระยะเวลางาน** = `finished_at − started_at` จึงรวมเวลาพักไปด้วย ดูงานที่ต้องทำต่อข้อ 3
 
 ## สถานะปัจจุบัน (2 พ.ย. 2026)
 
-- ทดสอบโหมดทดลองแล้ว 43/43 และฐานข้อมูล/สิทธิ์ 27/27
+- ทดสอบโหมดทดลองแล้ว 43/43 และฐานข้อมูล/สิทธิ์ 28/28
 - **ส่วนที่เชื่อมกับ Supabase จริงยังไม่เคยทดสอบ** ได้แก่ login, `loadAll`, insert/update, rpc และ storage upload
 - ขึ้น GitHub Pages แล้วที่ https://accessinth.github.io/infusion-production/ (deploy จาก main / root, มี `.nojekyll`) ทุกครั้งที่ push main เว็บจะอัปเดตเองภายใน 1–2 นาที
 - เจ้าของยังไม่ได้สร้างโปรเจกต์ Supabase แอปบนเว็บจึงยังเป็นโหมดทดลอง

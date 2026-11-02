@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:db": "node dbtest.mjs",
+    "test:db": "node dbtest.mjs && DB_EXPOSE=1 node dbtest.mjs",
     "test:e2e": "python3 e2e.py"
   },
   "dependencies": {

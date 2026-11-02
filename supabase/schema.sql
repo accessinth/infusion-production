@@ -211,6 +211,24 @@ grant execute on function public.verify_pin(uuid,text)     to authenticated;
 grant execute on function public.set_worker_pin(uuid,text) to authenticated;
 
 -- ---------------------------------------------------------------------
+-- สิทธิ์ระดับตาราง (Data API)
+-- โปรเจกต์ปิด "Automatically expose new tables" ไว้ จึงให้สิทธิ์เองตรงนี้
+-- ให้เฉพาะผู้ที่ล็อกอินแล้ว (authenticated) · คนนอก (anon) ไม่ได้สิทธิ์ตารางใดเลย
+-- แถวไหนอ่าน/แก้ได้ ยังถูกคุมด้วย RLS ด้านล่างอีกชั้น
+-- ---------------------------------------------------------------------
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on
+  public.profiles, public.workers, public.materials, public.products, public.settings,
+  public.orders, public.order_items, public.pieces, public.step_logs, public.qc_records, public.stock_receipts
+  to authenticated;
+revoke all on
+  public.profiles, public.workers, public.materials, public.products, public.settings,
+  public.orders, public.order_items, public.pieces, public.step_logs, public.qc_records, public.stock_receipts
+  from anon;
+revoke all on function public.app_role() from public, anon;
+grant execute on function public.app_role() to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------
 alter table public.profiles       enable row level security;
