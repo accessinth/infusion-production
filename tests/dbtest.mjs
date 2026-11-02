@@ -94,6 +94,8 @@ const lg = (await q('select status, materials from step_logs where id=$1', [lid]
 ok('แท็บเล็ตบันทึก ออเดอร์ → ชิ้นงาน → เริ่ม/เสร็จงาน → QC → รับวัสดุ ได้ครบ', lg.status === 'done' && lg.materials[0].qty === 1.52);
 await expectErr('กันสถานะที่ไม่ถูกต้อง', () => q("update step_logs set status='finished' where id=$1", [lid]), /check/);
 await expectErr('กันเลขออเดอร์ซ้ำ', () => q("insert into orders (order_no) values ('IF2611-001')"), /duplicate|unique/);
+await q("insert into step_logs (piece_id, step, worker_id) values ($1,'S2',$2)", [pid, w.id]);
+await expectErr('กันแท็บเล็ต 2 เครื่องกดเริ่มชิ้นเดียวกันพร้อมกัน', () => q("insert into step_logs (piece_id, step, worker_id) values ($1,'S2',$2)", [pid, w.id]), /one_active_step_per_piece/);
 const del = await db.query('delete from orders where id=$1', [oid]);
 ok('แท็บเล็ตลบออเดอร์ไม่ได้', del.affectedRows === 0 && (await q('select count(*)::int n from orders'))[0].n === 1);
 await q("insert into storage.objects (bucket_id, name) values ('qc-photos','2026-11/x.jpg')");

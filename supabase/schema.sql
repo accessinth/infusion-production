@@ -184,6 +184,10 @@ create index if not exists idx_logs_worker   on public.step_logs (worker_id, sta
 create index if not exists idx_qc_piece      on public.qc_records (piece_id);
 create index if not exists idx_receipts_mat  on public.stock_receipts (material_id);
 
+-- กันแท็บเล็ต 2 เครื่องกด "เริ่มงาน" ชิ้นเดียวกันพร้อมกัน: 1 ชิ้นมีงานที่กำลังทำได้ครั้งละ 1 รายการ
+create unique index if not exists one_active_step_per_piece
+  on public.step_logs (piece_id) where status = 'in_progress';
+
 -- ---------------------------------------------------------------------
 -- PIN
 -- ---------------------------------------------------------------------

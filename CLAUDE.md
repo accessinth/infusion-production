@@ -36,7 +36,7 @@ build.py              สร้าง index.html จาก src/app.html
 index.html            ไฟล์ที่ GitHub Pages เสิร์ฟ (สร้างจาก build — ห้ามแก้ตรง)
 supabase/schema.sql   ตาราง, RLS, ฟังก์ชัน PIN, bucket รูป, ข้อมูลเริ่มต้น (รันซ้ำได้)
 tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 45 ข้อ (Playwright + Chrome) บนโหมดทดลอง (?demo) + ตรวจว่าลิงก์หลักขึ้นหน้าเข้าสู่ระบบ
-tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 28 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
+tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 29 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
 ```
 
 ## คำสั่ง
@@ -44,7 +44,7 @@ tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 28 ข้อ �
 ```bash
 python3 build.py                                   # ทุกครั้งที่แก้ src/app.html
 cd tests && npm install
-npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 28/28 ทั้งคู่)
+npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 29/29 ทั้งคู่)
 pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 45/45) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
 python3 -m http.server 8000                        # เปิด http://localhost:8000/index.html
 ```
@@ -112,15 +112,18 @@ python3 -m http.server 8000                        # เปิด http://localho
 
 ## สถานะปัจจุบัน (2 พ.ย. 2026)
 
-- ทดสอบโหมดทดลองแล้ว 45/45 และฐานข้อมูล/สิทธิ์ 28/28
+- ทดสอบโหมดทดลองแล้ว 45/45 และฐานข้อมูล/สิทธิ์ 29/29
 - **รัน schema.sql บนโปรเจกต์จริงแล้ว** (2 พ.ย.) ตรวจแล้ว: 11 ตารางเปิด RLS, 39 policies, anon ไม่มีสิทธิ์ตาราง/view/verify_pin, bucket qc-photos + 2 policies, trigger สร้าง profile
 - ทดสอบจากเบราว์เซอร์จริงด้วย Publishable key แล้ว (supabase-js 2.45.4 และ 2.118.0): key ใช้ได้, คนนอกถูกปฏิเสธทุกทาง (ตาราง, view, rpc, storage)
-- **ยังไม่ได้ทดสอบ flow ที่ล็อกอินแล้ว** รอเจ้าของสร้างบัญชี station/manager ใน Authentication → Users
+- **บัญชีเครื่อง:** lumgabodykits@gmail.com = manager, accessinth@gmail.com = station
+- **ทดสอบ flow ที่ล็อกอินแล้วบนระบบจริงผ่าน (2 พ.ย.)** ด้วยบัญชี manager ผ่านชั้นข้อมูลของแอป: เพิ่มสินค้า, รับออเดอร์→ชิ้นงาน, เริ่ม/เสร็จงาน+วัสดุ, QC, รับวัสดุ, upsert ตั้งค่า, rpc verify_pin, อัปโหลดรูป+เปิดดู, โหลดใหม่ครบ · แท็บเล็ต 2 เครื่องกดเริ่มพร้อมกัน → เครื่องที่สองถูกปฏิเสธ (23505) · บัญชี station ตรวจแบบอ่านอย่างเดียวผ่าน SQL: role=station, อ่าน workers เต็ม 0 แถว, workers_public ได้
+- **ข้อมูลทดสอบที่ค้างในระบบจริง:** สินค้า TEST-PROD, ออเดอร์ TEST-252135 (+ชิ้นงาน/log/QC), ปรับยอด RS-INF 0.001 กก. (note TEST), รูป `qc-photos/_test/…` · ลบได้เมื่อเจ้าของอนุญาต
+- ยังไม่ได้ทดสอบการล็อกอินผ่านหน้าจอด้วยบัญชี station บนแท็บเล็ตจริง (เจ้าของทำเอง)
 - ขึ้น GitHub Pages แล้วที่ https://accessinth.github.io/infusion-production/ (deploy จาก main / root, มี `.nojekyll`) ทุกครั้งที่ push main เว็บจะอัปเดตเองภายใน 1–2 นาที
 
 ## งานที่ต้องทำต่อ (เรียงตามความสำคัญ)
 
-1. **ทดสอบ flow ที่ล็อกอินแล้วกับ Supabase จริง:** (เชื่อม CONFIG แล้ว ใช้ Publishable key เพราะ Supabase เลิกใช้ anon key แบบเดิมภายในสิ้นปี 2026) ทดสอบทุก flow ด้วยบัญชี station และ manager รวมถึงอัปโหลดรูป QC และกรณีแท็บเล็ต 2 เครื่องกดเริ่มชิ้นเดียวกันพร้อมกัน
+1. ~~ทดสอบกับ Supabase จริง~~ เสร็จแล้ว (ดูสถานะปัจจุบัน) · ป้องกันกดเริ่มซ้ำด้วย unique index `one_active_step_per_piece`
 2. **หลายคนทำขั้นเดียวกัน:** เช่น ปูใยแก้วตัวเรือใช้ช่าง 3 คน ตอนนี้ log มีคนเดียวทำให้ค่าแรงต่ำกว่าจริง แนวทางคือเพิ่มตาราง `step_log_workers` หรือคอลัมน์ `worker_ids uuid[]` แล้วคิดค่าแรงรายคน ต้องแก้ผลงานรายคนใน Dashboard ด้วย
 3. **พัก/ทำต่อ:** เก็บช่วงเวลาทำงานจริงเป็นหลายช่วงต่อ log แล้วคำนวณเวลาจากผลรวมของช่วง
 4. **ทำงานตอนเน็ตหลุด:** เก็บรายการที่บันทึกไม่สำเร็จไว้ในเครื่อง แล้วส่งใหม่เมื่อเน็ตกลับมา

@@ -1230,7 +1230,13 @@ const ACT = {
       await refreshPiece(d.id);
       const s = M.state[d.id];
       if(s.status!=='waiting'){ toast('ชิ้นงานนี้มีคนเริ่มไปแล้ว', 'bad'); refreshSheet(); return }
-      await dbInsert('step_logs', {id:uid(), piece_id:d.id, step:s.step, worker_id:w.id, finished_by:null, started_at:nowISO(), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:nowISO()});
+      try {
+        await dbInsert('step_logs', {id:uid(), piece_id:d.id, step:s.step, worker_id:w.id, finished_by:null, started_at:nowISO(), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:nowISO()});
+      } catch(e){
+        // อีกเครื่องกดเริ่มชิ้นนี้ไปก่อนเสี้ยววินาที (unique index one_active_step_per_piece)
+        if(e && e.code==='23505'){ await refreshPiece(d.id); render(); toast('ชิ้นงานนี้มีคนเริ่มไปแล้ว', 'bad'); return }
+        throw e;
+      }
       reindex(); render(); toast(`${w.name} เริ่ม ${stepLabel(s.step)}`);
     });
   },
