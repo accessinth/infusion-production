@@ -55,9 +55,17 @@ create table if not exists public.workers (
   created_at  timestamptz not null default now()
 );
 
--- มุมมองสำหรับแท็บเล็ต: ไม่มี pin_hash และค่าแรง
+-- ภาษาบนจอของช่างแต่ละคน: th ไทย | km เขมร | my พม่า (จอเปลี่ยนให้หลังใส่ PIN)
+alter table public.workers add column if not exists lang text not null default 'th';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'workers_lang_check') then
+    alter table public.workers add constraint workers_lang_check check (lang in ('th','km','my'));
+  end if;
+end $$;
+
+-- มุมมองสำหรับแท็บเล็ต: ไม่มี pin_hash และค่าแรง (คอลัมน์ใหม่ต้องต่อท้ายเสมอ)
 create or replace view public.workers_public as
-  select id, name, role, color, active, created_at from public.workers;
+  select id, name, role, color, active, created_at, lang from public.workers;
 
 create table if not exists public.materials (
   id            uuid primary key default gen_random_uuid(),
@@ -304,9 +312,9 @@ on conflict (id) do nothing;
 drop policy if exists "qc-photos: อัปโหลด" on storage.objects;
 create policy "qc-photos: อัปโหลด" on storage.objects
   for insert to authenticated with check (bucket_id = 'qc-photos');
+-- ไม่มี policy อ่าน/ลิสต์ไฟล์: bucket เป็น public เปิดรูปผ่านลิงก์ได้อยู่แล้ว
+-- (Supabase เตือนว่า policy select แบบกว้างทำให้ลิสต์ไฟล์ทั้งหมดได้) · อัปโหลดแบบไม่ทับไฟล์เดิมใช้แค่ insert
 drop policy if exists "qc-photos: อ่าน" on storage.objects;
-create policy "qc-photos: อ่าน" on storage.objects
-  for select to authenticated using (bucket_id = 'qc-photos');
 
 -- ---------------------------------------------------------------------
 -- ข้อมูลเริ่มต้น (แก้ราคาวัสดุและชื่อในแอปภายหลัง)

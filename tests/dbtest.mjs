@@ -58,6 +58,7 @@ ok('แท็บเล็ตอ่านวัสดุได้', (await q('sel
 ok('แท็บเล็ตอ่านตาราง workers ตรงไม่ได้ (ซ่อนค่าแรง/PIN)', (await q('select count(*)::int n from workers'))[0].n === 0);
 const wp = await q('select * from workers_public');
 ok('แท็บเล็ตเห็นรายชื่อผ่าน workers_public โดยไม่มีค่าแรงและ PIN', wp.length === 1 && !('hourly_rate' in wp[0]) && !('pin_hash' in wp[0]), Object.keys(wp[0]).join(','));
+ok('รายชื่อมีภาษาของช่าง (ค่าเริ่มต้นไทย)', wp[0].lang === 'th', String(wp[0].lang));
 ok('ตรวจ PIN ถูก → true', (await q('select verify_pin($1,$2) v', [mgrWorker, '1234']))[0].v === true);
 ok('ตรวจ PIN ผิด → false', (await q('select verify_pin($1,$2) v', [mgrWorker, '0000']))[0].v === false);
 await expectErr('แท็บเล็ตแก้ราคาวัสดุไม่ได้', async () => { const r = await db.query("update materials set unit_cost = 1 where code='GC-W'"); if (r.affectedRows === 0) throw new Error('0 rows (RLS กันไว้)'); }, /RLS|policy/);
@@ -69,6 +70,9 @@ await as('authenticated', mgrId);
 const [w] = await q("insert into workers (name, role, hourly_rate) values ('สมชาย','worker',65) returning id");
 await q('select set_worker_pin($1,$2)', [w.id, '5678']);
 ok('ผู้บริหารเพิ่มช่างและตั้ง PIN ได้', (await q('select verify_pin($1,$2) v', [w.id, '5678']))[0].v === true);
+await q("update workers set lang = 'km' where id = $1", [w.id]);
+ok('ตั้งภาษาช่างเป็นเขมร/พม่าได้', (await q('select lang from workers where id=$1', [w.id]))[0].lang === 'km');
+await expectErr('กันรหัสภาษาที่ไม่รองรับ', () => q("update workers set lang = 'en' where id = $1", [w.id]), /workers_lang_check/);
 const expected = createHash('sha256').update(`${w.id}:5678`).digest('hex');
 ok('รูปแบบ hash ตรงกับที่แอปใช้ (sha256 ของ id:PIN)', (await q('select pin_hash from workers where id=$1', [w.id]))[0].pin_hash === expected);
 await expectErr('PIN ต้องเป็นตัวเลข 4–6 หลัก', () => q('select set_worker_pin($1,$2)', [w.id, '12a']), /PIN/);
@@ -99,7 +103,10 @@ await expectErr('กันแท็บเล็ต 2 เครื่องกด
 const del = await db.query('delete from orders where id=$1', [oid]);
 ok('แท็บเล็ตลบออเดอร์ไม่ได้', del.affectedRows === 0 && (await q('select count(*)::int n from orders'))[0].n === 1);
 await q("insert into storage.objects (bucket_id, name) values ('qc-photos','2026-11/x.jpg')");
+ok('แท็บเล็ตลิสต์ไฟล์รูปทั้งหมดไม่ได้ (เปิดผ่านลิงก์เท่านั้น)', (await q("select count(*)::int n from storage.objects where bucket_id='qc-photos'"))[0].n === 0);
+await db.exec('reset role');
 ok('แท็บเล็ตอัปโหลดรูป QC ได้', (await q("select count(*)::int n from storage.objects where bucket_id='qc-photos'"))[0].n === 1);
+await as('authenticated', stationId);
 await expectErr('อัปโหลดเข้า bucket อื่นไม่ได้', () => q("insert into storage.objects (bucket_id, name) values ('other','x')"), /row-level security/);
 
 // ---- คนนอก (anon) ----
