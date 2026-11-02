@@ -1,0 +1,13 @@
+{
+  "name": "infusion-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:db": "node dbtest.mjs",
+    "test:e2e": "python3 e2e.py"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.3.16",
+    "qrcode-generator": "1.4.4"
+  }
+}

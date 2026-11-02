@@ -1,0 +1,1583 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>บันทึกงานอินฟิวชั่น</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: แอปแท็บเล็ตหน้างาน — แถบบนติดหัว, เนื้อหากว้างไม่เกิน 1280px, ใบงาน (job traveler) เลื่อนออกจากขวา */
+:root{
+  --bg:#ECF0F1; --surface:#FFFFFF; --surface-2:#F4F7F7; --line:#D2DBDD; --line-2:#B9C6C9;
+  --ink:#122024; --ink-2:#42545A; --muted:#66777D;
+  --accent:#0D6B71; --accent-ink:#FFFFFF; --accent-soft:#DDECEC; --accent-mid:#8CC2C4;
+  --good:#2B7A4B; --warn:#995A00; --bad:#BD3528;
+  --scrim:rgba(8,20,24,.46);
+  --shadow:0 1px 2px rgba(10,30,34,.07),0 8px 22px rgba(10,30,34,.07);
+  --f-display:'Bai Jamjuree','IBM Plex Sans Thai',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans Thai','Noto Sans Thai','Sarabun',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E1619; --surface:#152024; --surface-2:#1B282D; --line:#28383D; --line-2:#36494F;
+  --ink:#E4EDEF; --ink-2:#A7B8BD; --muted:#82959B;
+  --accent:#4DBDC1; --accent-ink:#06272A; --accent-soft:#183A3D; --accent-mid:#2F6E72;
+  --good:#5BC28A; --warn:#E1A33F; --bad:#EE7A6D;
+  --scrim:rgba(0,0,0,.6);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.25);
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E1619; --surface:#152024; --surface-2:#1B282D; --line:#28383D; --line-2:#36494F;
+  --ink:#E4EDEF; --ink-2:#A7B8BD; --muted:#82959B;
+  --accent:#4DBDC1; --accent-ink:#06272A; --accent-soft:#183A3D; --accent-mid:#2F6E72;
+  --good:#5BC28A; --warn:#E1A33F; --bad:#EE7A6D;
+  --scrim:rgba(0,0,0,.6);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.25);
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--f-body);-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:31;background:var(--surface)}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:600;line-height:1.25;margin:0;text-wrap:balance;letter-spacing:.005em}
+h2{font-size:1.25rem} h3{font-size:1.1rem}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-weight:500;letter-spacing:.01em}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .ink2{color:var(--ink-2)}
+.eyebrow{font-size:.78rem;letter-spacing:.06em;color:var(--muted);font-weight:500}
+
+/* ---- top bar ---- */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand-co{font:600 .7rem/1 var(--f-mono);letter-spacing:.16em;color:var(--muted)}
+.brand-dept{font:700 1.2rem/1.2 var(--f-display);margin-top:3px}
+.tabs-wrap{flex:1 1 420px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tabs-wrap::-webkit-scrollbar{display:none}
+.tabs{display:flex;gap:4px;width:max-content}
+.tab{border:0;background:none;padding:10px 14px;border-radius:8px;font:600 .98rem var(--f-display);color:var(--ink-2);cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:44px}
+.tab:hover{background:var(--surface-2)}
+.tab[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.tab svg{width:14px;height:14px;opacity:.6}
+.top-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.who{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border:1px solid var(--line);border-radius:999px;font-size:.88rem}
+.who b{font-weight:600}
+
+.banner{background:var(--accent-soft);color:var(--ink);font-size:.9rem}
+.banner-in{max-width:1280px;margin:0 auto;display:flex;gap:8px 16px;align-items:center;flex-wrap:wrap;
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+main{max-width:1280px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.section{display:flex;flex-direction:column;gap:12px;min-width:0}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sec-head h2 .count{font:500 .95rem var(--f-body);color:var(--muted);margin-left:6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ---- buttons & chips ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{background:var(--accent);filter:brightness(1.08)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn-ghost:hover{background:var(--surface-2)}
+.btn-danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.btn-xl{min-height:64px;font-size:1.15rem;padding:12px 28px;border-radius:12px;font-family:var(--f-display)}
+.btn-sm{min-height:36px;padding:4px 12px;font-size:.88rem}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.icon-btn{width:44px;height:44px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:1.3rem;line-height:1;color:var(--ink-2);flex:none}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;white-space:nowrap;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.chip.good{background:color-mix(in srgb,var(--good) 13%,var(--surface));color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,var(--surface))}
+.chip.warn{background:color-mix(in srgb,var(--warn) 13%,var(--surface));color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,var(--surface))}
+.chip.bad{background:color-mix(in srgb,var(--bad) 12%,var(--surface));color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,var(--surface))}
+.chip.info{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 30%,var(--surface))}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.seg{display:inline-flex;flex-wrap:wrap;gap:6px}
+.seg button{min-height:48px;min-width:56px;padding:6px 16px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg.res button[data-v="pass"][aria-pressed="true"]{background:var(--good);border-color:var(--good);color:#fff}
+.seg.res button[data-v="rework"][aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.seg.res button[data-v="scrap"][aria-pressed="true"]{background:var(--bad);border-color:var(--bad);color:#fff}
+.seg.small button{min-height:40px;min-width:0;font-weight:500;font-size:.92rem}
+
+/* ---- floor ---- */
+.floor-head{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.scan{flex:1 1 320px;display:flex;gap:8px;min-width:0}
+.scan input{flex:1;min-width:0;min-height:52px;border:1px solid var(--line-2);border-radius:10px;padding:0 14px;background:var(--surface);font-family:var(--f-mono);font-size:1.05rem}
+.stepbar{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.stepbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;min-height:96px}
+.stepbtn:hover{border-color:var(--line-2)}
+.stepbtn[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.stepbtn .no{font:700 1.6rem/1 var(--f-display);color:var(--accent)}
+.stepbtn .nm{font-weight:600;font-size:.95rem;line-height:1.3}
+.stepbtn .cnt{font-size:.8rem;color:var(--muted);margin-top:auto}
+.stepbtn .cnt b{color:var(--ink);font-weight:600}
+.stepbtn .rt{font-size:.72rem;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.pcard{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;min-width:0}
+.pcard:hover{border-color:var(--line-2);box-shadow:var(--shadow)}
+.pcard.working{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.pc-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pc-top .mono{font-size:1.02rem}
+.pc-prod{font-weight:600;font-size:1.02rem}
+.pc-meta{font-size:.86rem;color:var(--muted);overflow-wrap:anywhere}
+.pc-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.86rem;padding-top:6px;border-top:1px dashed var(--line)}
+.pips{display:flex;gap:3px}
+.pips i{width:10px;height:6px;border-radius:2px;background:var(--line)}
+.pips i.d{background:var(--accent)}
+.pips i.c{background:var(--accent-mid)}
+.empty{padding:22px;border:1px dashed var(--line-2);border-radius:12px;color:var(--muted);text-align:center;background:var(--surface)}
+.empty-act{padding:20px;border:1px dashed var(--line-2);border-radius:12px;background:var(--surface);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.empty-act p{margin:0;color:var(--ink-2)}
+.empty-act p b{color:var(--ink);font-family:var(--f-display);font-size:1.1rem;font-weight:600}
+.chip-btn{min-height:40px;padding:6px 14px;font-size:.9rem;cursor:pointer}
+.chip-btn:hover{border-color:var(--accent);color:var(--accent)}
+#queue{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 130px)}
+@media (max-width:760px){
+  .stepbar-wrap{overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin-bottom:-4px;padding-bottom:4px}
+  .stepbar-wrap::-webkit-scrollbar{display:none}
+  .stepbar{display:flex;gap:6px;width:max-content}
+  .stepbtn{flex:0 0 124px;min-height:78px;padding:8px 10px;scroll-snap-align:start}
+  .stepbtn .cnt{font-size:.74rem;white-space:nowrap}
+  .stepbtn .no{font-size:1.3rem}
+  .stepbtn .nm{font-size:.88rem}
+  .stepbtn .rt{display:none}
+}
+
+/* ---- panels / tables ---- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.action{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+th{font-weight:600;font-size:.8rem;color:var(--muted);letter-spacing:.03em;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+td.wrap{white-space:normal;min-width:180px}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--surface-2)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:90px}
+.bar span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.var-up{color:var(--bad);font-weight:600} .var-dn{color:var(--good);font-weight:600}
+
+/* ---- KPI ---- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi .v{font:700 2rem/1.15 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.84rem;color:var(--muted)}
+.dash-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:1180px){.dash-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* WIP bars */
+.legend{display:flex;gap:14px;font-size:.84rem;color:var(--ink-2);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.wip{display:flex;flex-direction:column;gap:6px}
+.wip-row{display:grid;grid-template-columns:minmax(110px,170px) 1fr 44px;gap:10px;align-items:center;font-size:.9rem;padding:3px 4px;border-radius:6px}
+.wip-row:hover{background:var(--surface-2)}
+.wip-track{display:flex;gap:2px;height:16px;min-width:0}
+.wip-track span{display:block;height:100%}
+.wip-track span:first-child{border-radius:4px 0 0 4px}
+.wip-track span:last-child{border-radius:0 4px 4px 0}
+.wip-track span:only-child{border-radius:4px}
+.s-work{background:var(--accent)} .s-wait{background:var(--accent-mid)} .s-qc{background:var(--warn)}
+
+/* ---- sheet & modal ---- */
+.sheet{position:fixed;inset:0;z-index:40;display:flex;justify-content:flex-end}
+.sheet-backdrop{position:absolute;inset:0;background:var(--scrim)}
+.sheet-panel{position:relative;width:min(780px,100%);height:100%;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));box-shadow:-10px 0 30px rgba(0,0,0,.18)}
+.sheet-head{position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;justify-content:space-between;
+  padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet-head h2{font-size:1.35rem}
+.sheet-head>.row{flex-wrap:nowrap;flex:none}
+.sheet-head .sub{font-size:.9rem;color:var(--ink-2);margin-top:2px;overflow-wrap:anywhere}
+.sheet-body{display:flex;flex-direction:column;gap:16px;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--scrim);
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal-box{background:var(--surface);border-radius:16px;width:min(560px,100%);max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.who-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.who-btn{min-height:68px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:8px 14px;text-align:left}
+.who-btn:hover{border-color:var(--accent)}
+.who-btn b{font-size:1.08rem;font-weight:600} .who-btn small{color:var(--muted)}
+.pin-dots{display:flex;gap:12px;justify-content:center;padding:6px 0}
+.pin-dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2)}
+.pin-dots i.on{background:var(--accent);border-color:var(--accent)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{min-height:62px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font:600 1.45rem var(--f-display);cursor:pointer}
+.keypad button.ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:1.05rem}
+.err{color:var(--bad);font-weight:600;text-align:center;min-height:1.4em}
+
+/* route track */
+.track{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px}
+.tk{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);display:flex;flex-direction:column;gap:1px;min-width:0}
+.tk .tk-no{font:700 1.05rem var(--f-display);color:var(--muted)}
+.tk .tk-nm{font-weight:600;font-size:.88rem;line-height:1.3}
+.tk .tk-meta{font-size:.76rem;color:var(--muted);overflow-wrap:anywhere}
+.tk.done{background:var(--surface-2)}
+.tk.done .tk-no{color:var(--good)}
+.tk.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tk.cur .tk-no{color:var(--accent)}
+.stepno{display:inline-grid;place-items:center;min-width:2.1em;height:2.1em;padding:0 .4em;border-radius:8px;background:var(--accent);color:var(--accent-ink);font:700 1rem var(--f-display);margin-right:8px;vertical-align:middle}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.flabel{font-size:.86rem;font-weight:600;color:var(--ink-2)}
+.input,select.input,textarea.input{min-height:48px;border:1px solid var(--line-2);border-radius:9px;padding:8px 12px;background:var(--surface);width:100%;min-width:0}
+textarea.input{min-height:76px;resize:vertical}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.mat-editor{display:flex;flex-direction:column;gap:8px}
+.mat-editor.layers{counter-reset:layer}
+.mrow,.irow{display:grid;grid-template-columns:minmax(0,1fr) 110px 92px 44px;gap:8px;align-items:center}
+.mat-editor.layers .mrow{grid-template-columns:62px minmax(0,1fr) 100px 84px 44px;counter-increment:layer}
+.layer-no{font-size:.86rem;font-weight:600;color:var(--ink-2)}
+.layer-no::after{content:counter(layer)}
+.mrow select,.mrow input,.irow select,.irow input{min-height:48px;border:1px solid var(--line-2);border-radius:9px;padding:6px 10px;background:var(--surface);width:100%;min-width:0}
+.irow{grid-template-columns:minmax(0,1fr) 96px minmax(0,190px) 44px}
+@media (max-width:520px){
+  .mrow{grid-template-columns:minmax(0,1fr) 84px 72px 44px}
+  .mat-editor.layers .mrow{grid-template-columns:minmax(0,1fr) 84px 72px 44px}
+  .mat-editor.layers .layer-no{grid-column:1/-1}
+  .irow{grid-template-columns:minmax(0,1fr) 72px 44px}
+  .irow .i-route{grid-column:1/3}
+}
+.std-line{font-size:.88rem;color:var(--ink-2)}
+.std-line b{font-weight:600;color:var(--ink)}
+.chips-pick{display:flex;flex-wrap:wrap;gap:6px}
+.hist{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.hist-item{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:.9rem;align-items:start}
+.hist-item:last-child{border-bottom:0}
+.hist-item .t{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.hist-item .d{min-width:0;overflow-wrap:anywhere}
+.thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.feed{display:flex;flex-direction:column}
+.feed-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.feed-item:last-child{border-bottom:0}
+.feed-item .t{color:var(--muted);font-size:.82rem;width:88px;flex:none}
+.subtabs{display:flex;gap:6px;flex-wrap:wrap}
+
+/* labels */
+.labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.label{background:#fff;color:#111;border:1px solid #c9c9c9;border-radius:8px;padding:10px;display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;break-inside:avoid}
+.label svg{width:96px;height:96px;display:block}
+.label .lc{font:600 .82rem var(--f-mono);overflow-wrap:anywhere}
+.label .lp{font-size:.82rem;line-height:1.3}
+.label .lr{font-size:.72rem;color:#555}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:80;background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.toast.bad{background:var(--bad);color:#fff}
+.login{max-width:420px;margin:8vh auto 0;width:100%}
+
+@media print{
+  .topbar,.banner,main,.sheet-backdrop,.sheet-head .no-print,.no-print{display:none!important}
+  body::before{display:none}
+  .sheet{position:static} .sheet-panel{width:100%;box-shadow:none;overflow:visible;height:auto;background:#fff}
+  .sheet-head{position:static}
+}
+@media (prefers-reduced-motion:no-preference){ .pcard,.stepbtn,.btn{transition:background-color .15s,border-color .15s,box-shadow .15s} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="brand-co">MARSHAL AEROPART</span><span class="brand-dept">แผนกอินฟิวชั่น</span></div>
+    <div class="tabs-wrap"><nav class="tabs" id="tabs" aria-label="เมนูหลัก"></nav></div>
+    <div class="top-right" id="topright"></div>
+  </div>
+</header>
+<div id="banner"></div>
+<main id="main"><div class="empty">กำลังโหลดข้อมูล…</div></main>
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-backdrop" data-act="closeSheet"></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" id="sheetBody"></section>
+</div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+/* =====================================================================
+   การเชื่อมต่อ Supabase — เว้นว่างไว้ = โหมดทดลอง (ข้อมูลตัวอย่าง เก็บในเบราว์เซอร์)
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: "",       // เช่น https://abcdxyz.supabase.co
+  SUPABASE_ANON_KEY: ""   // Project Settings → API → anon public
+};
+
+/* ---------- ค่าคงที่ของกระบวนการ ---------- */
+const STEPS = {
+  S1:  {no:'1',   name:'พ่นเจลโค้ต',        hint:'พ่น 2 เที่ยวให้สีสม่ำเสมอ', passes:[1,2,3], defPass:2, cats:['gelcoat','other']},
+  S2:  {no:'2',   name:'ปูใยแก้ว',          hint:'ระบุชนิด เบอร์ และจำนวนเมตร แยกทีละชั้น', layers:true, cats:['fiber']},
+  S3:  {no:'3',   name:'อินฟิวชั่น',         hint:'ดึงน้ำยาเรซินเข้าแม่พิมพ์', cats:['resin','other']},
+  S4:  {no:'4',   name:'เจียรตัดแต่ง',       hint:'ตัดแต่งให้ได้รูปทรงที่ถูกต้อง', cats:['other']},
+  S5:  {no:'5',   name:'เก็บผิวงาน',         hint:'ขัดหยาบจนถึงละเอียด', route:'A', cats:['other']},
+  S5_1:{no:'5.1', name:'พ่นเรซินเจลโค้ต',    hint:'1–3 เที่ยว', passes:[1,2,3], defPass:2, route:'B', cats:['resin','gelcoat','other']},
+  S5_2:{no:'5.2', name:'ขัดเก็บผิว',         hint:'หลังพ่นเรซินเจลโค้ต ขัดหยาบจนถึงละเอียด', route:'B', cats:['other']},
+  S6:  {no:'6',   name:'ขัดเงา',            hint:'ลงยาขัด ลบรอยเสี้ยนจนถึงรอยขนแมว', cats:['polish']},
+  S7:  {no:'7',   name:'ล้าง เตรียมส่ง',      hint:'ทำความสะอาดชิ้นงาน', cats:['other']}
+};
+const STEP_ORDER = ['S1','S2','S3','S4','S5','S5_1','S5_2','S6','S7'];
+const ROUTES = {A:['S1','S2','S3','S4','S5','S6','S7'], B:['S1','S2','S3','S4','S5_1','S5_2','S6','S7']};
+const ROUTE_NAME = {A:'เก็บผิว', B:'พ่นเรซินเจลโค้ตเพิ่ม'};
+const QC_POINTS = ['S3','S7'];
+const QC_POINT_NAME = {S3:'หลังอินฟิวชั่น (ถอดแม่พิมพ์)', S7:'ขั้นสุดท้ายก่อนส่ง'};
+const DEFECTS = ['ฟองอากาศ','เจลโค้ตไม่สม่ำเสมอ','ใยแห้ง (dry spot)','เรซินไม่เต็ม','ขอบแตก/บิ่น','ขนาด/รูปทรงผิด','รอยขัด/ขนแมว','สิ่งปนเปื้อน','อื่นๆ'];
+const ROLE_RANK = {worker:1, supervisor:2, manager:3};
+const ROLE_NAME = {worker:'ช่าง', supervisor:'หัวหน้า/QC', manager:'ผู้บริหาร'};
+const CAT_NAME = {gelcoat:'เจลโค้ต', fiber:'ใยแก้ว', resin:'เรซิน', polish:'ยาขัด', other:'อื่นๆ'};
+const UNIT_NAME = {kg:'กก.', m:'ม.', pcs:'ชิ้น'};
+const TABLES = ['workers','materials','products','settings','orders','order_items','pieces','step_logs','qc_records','stock_receipts'];
+const TABS = [
+  {id:'floor', label:'หน้างาน', min:0},
+  {id:'qc', label:'QC', min:2},
+  {id:'orders', label:'ออเดอร์', min:2},
+  {id:'stock', label:'สต็อกวัสดุ', min:2},
+  {id:'dash', label:'ผู้บริหาร', min:3},
+  {id:'settings', label:'ตั้งค่า', min:3}
+];
+const FRAMED = (()=>{ try { return window.self !== window.top } catch(e){ return true } })();
+const SESSION_MIN = 10;
+
+/* ---------- state ---------- */
+const S = {
+  mode: (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) ? 'supabase' : 'demo',
+  deviceRole: 'manager', sb: null, data: {}, view: 'floor',
+  stationStep: lsGet('stationStep') || 'S1',
+  session: null, dashRange: 30, orderFilter: 'open', setTab: 'workers', sheet: null, confirmKey: null
+};
+let M = {};
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16) });
+function lsGet(k){ try { return localStorage.getItem('mi:'+k) } catch(e){ return null } }
+function lsSet(k,v){ try { localStorage.setItem('mi:'+k, v) } catch(e){} }
+const num = v => { const n = Number(v); return isFinite(n) ? n : 0 };
+const pad = n => String(n).padStart(2,'0');
+const fmt = (n,d=0) => num(n).toLocaleString('th-TH',{minimumFractionDigits:d,maximumFractionDigits:d});
+const baht = n => '฿' + fmt(Math.round(num(n)));
+const nowISO = () => new Date().toISOString();
+const TH_MON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function toDate(s){ return new Date(s && s.length===10 ? s+'T00:00:00' : s) }
+function fDate(s){ if(!s) return '–'; const d = toDate(s); return d.getDate()+' '+TH_MON[d.getMonth()] }
+function fTime(s){ const d = toDate(s); return pad(d.getHours())+':'+pad(d.getMinutes()) }
+function fDT(s){ if(!s) return '–'; const d = toDate(s), t = new Date(); return (d.toDateString()===t.toDateString() ? 'วันนี้' : fDate(s)) + ' ' + fTime(s) }
+function localDate(d=new Date()){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()) }
+const mins = (a,b) => (toDate(b) - toDate(a)) / 60000;
+function fMins(m){ m = Math.max(0, Math.round(m)); if(m < 60) return m+' นาที'; const h = Math.floor(m/60), r = m%60; return h+' ชม.'+(r ? ' '+r+' น.' : '') }
+function fQty(q, unit){ q = num(q); if(unit==='kg') return q < 1 ? fmt(q*1000)+' ก.' : fmt(q,2)+' กก.'; if(unit==='m') return fmt(q,1)+' ม.'; return fmt(q)+' ชิ้น' }
+const byId = arr => Object.fromEntries((arr||[]).map(x => [x.id, x]));
+function groupBy(arr, k){ const o = {}; for(const x of arr||[]) (o[x[k]] ||= []).push(x); return o }
+function daysTo(dateStr){ const d = toDate(dateStr); d.setHours(0,0,0,0); const t = new Date(); t.setHours(0,0,0,0); return Math.round((d - t)/86400000) }
+async function sha256hex(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+function toast(msg, kind=''){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast ' + kind; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, kind==='bad' ? 4200 : 2600);
+}
+function errMsg(e){ return (e && (e.message || e.error_description)) || String(e) }
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s) }) }
+function setting(key, def){ const r = (S.data.settings||[]).find(x => x.key===key); return r ? r.value : def }
+const defaultRate = () => num(setting('default_labor_rate', 60)) || 60;
+function workerRate(id){ const w = M.worker[id]; return w && num(w.hourly_rate) > 0 ? num(w.hourly_rate) : defaultRate() }
+const wName = id => M.worker[id]?.name || '–';
+const stepLabel = s => STEPS[s] ? STEPS[s].no+' '+STEPS[s].name : s;
+const rank = () => S.session ? ROLE_RANK[S.session.worker.role] || 0 : 0;
+const canEditMaster = () => S.mode==='demo' || S.deviceRole==='manager';
+
+/* =====================================================================
+   DATA LAYER  — โหมดทดลอง (localStorage) และ Supabase ใช้โครงสร้างเดียวกัน
+   ===================================================================== */
+const DEMO_KEY = 'marshal-infusion-demo-v2';
+function demoSave(){ try { localStorage.setItem(DEMO_KEY, JSON.stringify(S.data)) } catch(e){ toast('พื้นที่เก็บข้อมูลของเบราว์เซอร์เต็ม ลองลบรูปบางส่วน', 'bad') } }
+function demoLoad(){ try { const j = localStorage.getItem(DEMO_KEY); return j ? JSON.parse(j) : null } catch(e){ return null } }
+
+async function fetchAll(table, source){
+  let out = [], from = 0; const size = 1000;
+  for(;;){
+    const { data, error } = await S.sb.from(source || table).select('*').range(from, from + size - 1);
+    if(error) throw error;
+    out = out.concat(data); if(data.length < size) break; from += size;
+  }
+  return out;
+}
+async function loadAll(){
+  if(S.mode==='demo'){
+    S.data = demoLoad() || await seedDemo();
+    for(const t of TABLES) S.data[t] ||= [];
+    demoSave();
+  } else {
+    const d = {};
+    await Promise.all(TABLES.map(async t => {
+      d[t] = await fetchAll(t, t==='workers' && S.deviceRole!=='manager' ? 'workers_public' : t);
+    }));
+    S.data = d;
+  }
+  reindex();
+}
+async function refreshPiece(pid){
+  if(S.mode!=='supabase') return;
+  const { data, error } = await S.sb.from('step_logs').select('*').eq('piece_id', pid);
+  if(error) throw error;
+  S.data.step_logs = S.data.step_logs.filter(l => l.piece_id !== pid).concat(data);
+  reindex();
+}
+async function dbInsert(table, rows){
+  rows = [].concat(rows); if(!rows.length) return;
+  if(S.mode==='supabase'){ const { error } = await S.sb.from(table).insert(rows); if(error) throw error }
+  S.data[table].push(...rows);
+  if(S.mode==='demo') demoSave();
+}
+async function dbUpdate(table, id, patch){
+  if(S.mode==='supabase'){ const { error } = await S.sb.from(table).update(patch).eq('id', id); if(error) throw error }
+  const r = S.data[table].find(x => x.id===id); if(r) Object.assign(r, patch);
+  if(S.mode==='demo') demoSave();
+}
+async function saveSetting(key, value){
+  if(S.mode==='supabase'){ const { error } = await S.sb.from('settings').upsert({key, value}); if(error) throw error }
+  const r = S.data.settings.find(x => x.key===key); if(r) r.value = value; else S.data.settings.push({key, value});
+  if(S.mode==='demo') demoSave();
+}
+async function verifyPin(w, pin){
+  if(S.mode==='supabase'){ const { data, error } = await S.sb.rpc('verify_pin', {p_worker:w.id, p_pin:pin}); if(error) throw error; return !!data }
+  return w.pin_hash === await sha256hex(w.id+':'+pin);
+}
+async function setPin(wid, pin){
+  if(S.mode==='supabase'){ const { error } = await S.sb.rpc('set_worker_pin', {p_worker:wid, p_pin:pin}); if(error) throw error; return }
+  const w = S.data.workers.find(x => x.id===wid); w.pin_hash = await sha256hex(wid+':'+pin); demoSave();
+}
+function compressImage(file, maxSide, quality){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res({blob:b, dataUrl:c.toDataURL('image/jpeg', quality)}) : rej(new Error('แปลงรูปไม่สำเร็จ')), 'image/jpeg', quality);
+    };
+    img.onerror = () => rej(new Error('อ่านไฟล์รูปไม่ได้'));
+    img.src = url;
+  });
+}
+async function uploadPhoto(input){
+  const f = input && input.files && input.files[0]; if(!f) return null;
+  if(S.mode==='demo'){ const r = await compressImage(f, 720, .6); return r.dataUrl }
+  const r = await compressImage(f, 1400, .75);
+  const path = localDate().slice(0,7) + '/' + uid() + '.jpg';
+  const { error } = await S.sb.storage.from('qc-photos').upload(path, r.blob, {contentType:'image/jpeg'});
+  if(error) throw error;
+  return S.sb.storage.from('qc-photos').getPublicUrl(path).data.publicUrl;
+}
+
+/* =====================================================================
+   DERIVED STATE
+   ===================================================================== */
+function reindex(){
+  const D = S.data;
+  M = {
+    worker: byId(D.workers), material: byId(D.materials), product: byId(D.products),
+    order: byId(D.orders), piece: byId(D.pieces),
+    logsByPiece: groupBy(D.step_logs, 'piece_id'), qcByPiece: groupBy(D.qc_records, 'piece_id'),
+    piecesByOrder: groupBy(D.pieces, 'order_id'), itemsByOrder: groupBy(D.order_items, 'order_id'),
+    state: {}
+  };
+  for(const p of D.pieces) M.state[p.id] = computeState(p);
+}
+function computeState(p){
+  const logs = (M.logsByPiece[p.id]||[]).slice().sort((a,b) => a.started_at < b.started_at ? -1 : 1);
+  const qcs = (M.qcByPiece[p.id]||[]).slice().sort((a,b) => a.created_at < b.created_at ? -1 : 1);
+  const route = ROUTES[p.route] || ROUTES.A;
+  const done = new Map(); for(const l of logs) if(l.status==='done') done.set(l.step, l);
+  const base = {logs, qcs, route, done, doneCount: route.filter(s => done.has(s)).length, total: route.length};
+  if(p.scrapped) return {...base, status:'scrap'};
+  const active = logs.find(l => l.status==='in_progress');
+  if(active) return {...base, status:'working', step:active.step, log:active};
+  const next = route.find(s => !done.has(s));
+  if(next) return {...base, status:'waiting', step:next};
+  const last = done.get('S7');
+  const fq = qcs.filter(q => q.step==='S7' && q.created_at >= last.finished_at).pop();
+  if(fq && fq.result==='pass') return {...base, status:'done', doneAt: fq.created_at};
+  return {...base, status:'qc', step:'S7'};
+}
+function qcPending(){
+  const out = [];
+  for(const p of S.data.pieces){
+    const s = M.state[p.id]; if(s.status==='scrap') continue;
+    for(const pt of QC_POINTS){
+      const l = s.done.get(pt); if(!l) continue;
+      if(!s.qcs.some(q => q.step===pt && q.created_at >= l.finished_at)) out.push({piece:p, point:pt, at:l.finished_at});
+    }
+  }
+  return out.sort((a,b) => a.at < b.at ? -1 : 1);
+}
+function orderStats(o){
+  const items = M.itemsByOrder[o.id] || [];
+  const target = items.reduce((a,i) => a + num(i.qty), 0);
+  const ps = M.piecesByOrder[o.id] || [];
+  const live = ps.filter(p => !p.scrapped);
+  const done = live.filter(p => M.state[p.id].status==='done').length;
+  return {target, done, wip: live.length - done, scrap: ps.length - live.length, complete: target > 0 && done >= target};
+}
+function dueChip(due, complete){
+  if(!due) return '';
+  if(complete) return `<span class="chip good">ครบแล้ว</span>`;
+  const d = daysTo(due);
+  if(d < 0) return `<span class="chip bad">เลยกำหนด ${-d} วัน</span>`;
+  if(d <= 2) return `<span class="chip warn">ส่ง ${fDate(due)}</span>`;
+  return `<span class="chip">ส่ง ${fDate(due)}</span>`;
+}
+function logMins(l){ return l.finished_at ? mins(l.started_at, l.finished_at) : 0 }
+function stdFor(p, step){ return M.product[p.product_id]?.standard?.[step] || null }
+function logCost(l){
+  let mat = 0; for(const m of l.materials||[]){ const mt = M.material[m.material_id]; if(mt) mat += num(m.qty) * num(mt.unit_cost) }
+  const m = logMins(l); return {mat, labor: m/60 * workerRate(l.finished_by || l.worker_id), mins: m};
+}
+function stdCost(productId, route){
+  const pr = M.product[productId]; let mat = 0, m = 0;
+  for(const s of ROUTES[route]){ const sd = pr?.standard?.[s]; if(!sd) continue; m += num(sd.minutes);
+    for(const x of sd.materials||[]){ const mt = M.material[x.material_id]; if(mt) mat += num(x.qty) * num(mt.unit_cost) } }
+  return {mat, labor: m/60 * defaultRate(), mins: m};
+}
+function stockLevels(){
+  const lv = {}; for(const m of S.data.materials) lv[m.id] = {onHand:0, used30:0};
+  const from = Date.now() - 30*86400000;
+  for(const r of S.data.stock_receipts) if(lv[r.material_id]) lv[r.material_id].onHand += num(r.qty);
+  for(const l of S.data.step_logs){ if(l.status!=='done' && l.status!=='reworked') continue;
+    for(const m of l.materials||[]){ const x = lv[m.material_id]; if(!x) continue; x.onHand -= num(m.qty); if(toDate(l.finished_at) >= from) x.used30 += num(m.qty) } }
+  return lv;
+}
+
+/* =====================================================================
+   SHELL
+   ===================================================================== */
+const LOCK_SVG = `<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 7V5a4 4 0 1 1 8 0v2h1v8H3V7h1Zm2 0h4V5a2 2 0 1 0-4 0v2Z"/></svg>`;
+function renderTabs(){
+  $('#tabs').innerHTML = TABS.map(t => {
+    const locked = t.min > rank();
+    return `<button class="tab" data-act="tab" data-v="${t.id}" ${S.view===t.id ? 'aria-current="page"' : ''}>${t.label}${locked ? LOCK_SVG : ''}</button>`;
+  }).join('');
+}
+function renderTop(){
+  let h = '';
+  if(S.session) h += `<div class="who"><span><b>${esc(S.session.worker.name)}</b> · ${ROLE_NAME[S.session.worker.role]}</span><button class="btn btn-sm btn-ghost" data-act="lock">ล็อก</button></div>`;
+  if(S.mode==='supabase') h += `<button class="btn btn-sm" data-act="reload" aria-label="โหลดข้อมูลใหม่">โหลดใหม่</button>`;
+  $('#topright').innerHTML = h;
+}
+function renderBanner(){
+  if(S.mode!=='demo'){ $('#banner').innerHTML = ''; return }
+  const armed = S.confirmKey==='reset';
+  $('#banner').innerHTML = `<div class="banner"><div class="banner-in">
+    <span><b>โหมดทดลอง</b> · ข้อมูลทั้งหมดเป็นตัวอย่างและเก็บอยู่ในเบราว์เซอร์นี้เท่านั้น · PIN ของทุกคนคือ <b class="mono">1234</b></span>
+    <button class="btn btn-sm ${armed ? 'btn-danger' : 'btn-ghost'}" data-act="resetDemo">${armed ? 'แตะอีกครั้งเพื่อสร้างข้อมูลตัวอย่างใหม่' : 'สร้างข้อมูลตัวอย่างใหม่'}</button>
+  </div></div>`;
+}
+function render(){
+  renderTabs(); renderTop(); renderBanner();
+  const V = {floor:vFloor, qc:vQC, orders:vOrders, stock:vStock, dash:vDash, settings:vSettings}[S.view] || vFloor;
+  $('#main').innerHTML = V();
+  if(S.sheet) refreshSheet();
+}
+function openSheet(fn, ...args){ S.sheet = {fn, args}; $('#sheet').hidden = false; refreshSheet(); $('#sheetBody').scrollTop = 0; document.body.style.overflow = 'hidden' }
+function refreshSheet(){ if(!S.sheet) return; const st = $('#sheetBody').scrollTop; $('#sheetBody').innerHTML = S.sheet.fn(...S.sheet.args); $('#sheetBody').scrollTop = st }
+function closeSheet(){ S.sheet = null; $('#sheet').hidden = true; $('#sheetBody').innerHTML = ''; document.body.style.overflow = '' }
+function sheetHead(title, sub, extra=''){
+  return `<header class="sheet-head"><div style="min-width:0"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
+    <div class="row no-print">${extra}<button class="icon-btn" data-act="closeSheet" aria-label="ปิด">×</button></div></header>`;
+}
+
+/* ---------- worker picker + PIN ---------- */
+function askWorker({title, minRank=1, preselect=null, sub=''}){
+  return new Promise(resolve => {
+    const list = S.data.workers.filter(w => w.active !== false && (ROLE_RANK[w.role]||0) >= minRank)
+      .sort((a,b) => (ROLE_RANK[a.role]-ROLE_RANK[b.role]) || a.name.localeCompare(b.name,'th'));
+    let sel = (preselect && list.find(w => w.id===preselect)) || (list.length===1 ? list[0] : null);
+    let pin = '', err = '', busy = false;
+    const modal = $('#modal');
+    const draw = () => {
+      if(!list.length){ modal.innerHTML = `<div class="modal-box"><h2>${esc(title)}</h2><p>ยังไม่มีรายชื่อที่มีสิทธิ์ทำรายการนี้ เพิ่มได้ที่ ตั้งค่า → ช่าง</p><button class="btn" data-m="cancel">ปิด</button></div>`; return }
+      if(!sel){
+        modal.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <div class="sec-head"><h2>${esc(title)}</h2><button class="icon-btn" data-m="cancel" aria-label="ยกเลิก">×</button></div>
+          ${sub ? `<p class="ink2" style="margin:0">${sub}</p>` : ''}
+          <div class="who-grid">${list.map(w => `<button class="who-btn" data-m="who" data-id="${w.id}"><b>${esc(w.name)}</b><small>${ROLE_NAME[w.role]}</small></button>`).join('')}</div>
+        </div>`;
+      } else {
+        modal.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true" aria-label="ใส่ PIN">
+          <div class="sec-head"><h2>${esc(title)}</h2><button class="icon-btn" data-m="cancel" aria-label="ยกเลิก">×</button></div>
+          <div class="row" style="justify-content:space-between"><span>ใส่ PIN ของ <b>${esc(sel.name)}</b></span>${list.length > 1 ? `<button class="btn btn-sm btn-ghost" data-m="back">เปลี่ยนคน</button>` : ''}</div>
+          <div class="pin-dots">${Array.from({length:Math.max(4,pin.length)}, (_,i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join('')}</div>
+          <div class="err">${esc(err)}</div>
+          <div class="keypad">${[1,2,3,4,5,6,7,8,9].map(k => `<button data-m="key" data-k="${k}">${k}</button>`).join('')}
+            <button data-m="del" aria-label="ลบ">⌫</button><button data-m="key" data-k="0">0</button><button class="ok" data-m="ok">${busy ? 'กำลังตรวจ…' : 'ยืนยัน'}</button></div>
+          ${S.mode==='demo' ? `<p class="muted" style="margin:0;text-align:center;font-size:.85rem">โหมดทดลอง: PIN คือ 1234</p>` : ''}
+        </div>`;
+      }
+    };
+    const close = v => { modal.hidden = true; modal.innerHTML = ''; modal.onclick = null; document.removeEventListener('keydown', onKey, true); resolve(v) };
+    const tryPin = async () => {
+      if(busy || pin.length < 4) { if(pin.length < 4){ err = 'PIN อย่างน้อย 4 หลัก'; draw() } return }
+      busy = true; draw();
+      try { const ok = await verifyPin(sel, pin); busy = false; if(ok) return close(sel); err = 'PIN ไม่ถูกต้อง ลองใหม่'; pin = ''; draw() }
+      catch(e){ busy = false; err = 'ตรวจ PIN ไม่ได้: ' + errMsg(e); draw() }
+    };
+    const onKey = e => {
+      if(!sel) { if(e.key==='Escape') close(null); return }
+      if(/^[0-9]$/.test(e.key) && pin.length < 6){ pin += e.key; err=''; draw(); e.preventDefault() }
+      else if(e.key==='Backspace'){ pin = pin.slice(0,-1); draw(); e.preventDefault() }
+      else if(e.key==='Enter'){ tryPin(); e.preventDefault() }
+      else if(e.key==='Escape') close(null);
+    };
+    modal.onclick = e => {
+      if(e.target===modal) return close(null);
+      const b = e.target.closest('[data-m]'); if(!b) return;
+      const a = b.dataset.m;
+      if(a==='cancel') close(null);
+      else if(a==='who'){ sel = list.find(w => w.id===b.dataset.id); pin=''; err=''; draw() }
+      else if(a==='back'){ sel = null; pin=''; err=''; draw() }
+      else if(a==='key'){ if(pin.length < 6){ pin += b.dataset.k; err=''; draw() } }
+      else if(a==='del'){ pin = pin.slice(0,-1); draw() }
+      else if(a==='ok') tryPin();
+    };
+    document.addEventListener('keydown', onKey, true);
+    modal.hidden = false; draw();
+  });
+}
+function startSession(w){ S.session = {worker:w, until: Date.now() + SESSION_MIN*60000} }
+function lock(){ S.session = null; if((TABS.find(t => t.id===S.view)?.min||0) > 0) S.view = 'floor'; closeSheet(); render() }
+
+/* =====================================================================
+   VIEW: หน้างาน
+   ===================================================================== */
+function pieceCard(p){
+  const s = M.state[p.id], pr = M.product[p.product_id], o = M.order[p.order_id];
+  const pips = s.route.map(st => `<i class="${s.done.has(st) ? 'd' : (st===s.step && s.status==='working' ? 'c' : '')}"></i>`).join('');
+  const foot = s.status==='working'
+    ? `<span><b>${esc(wName(s.log.worker_id))}</b> · <span data-since="${s.log.started_at}">${fMins(mins(s.log.started_at, nowISO()))}</span></span>`
+    : `<span class="muted">${p.route==='B' ? 'เส้นทาง B · พ่นเจลเพิ่ม' : 'เส้นทาง A · เก็บผิว'}</span>`;
+  return `<button class="pcard ${s.status==='working' ? 'working' : ''}" data-act="openPiece" data-id="${p.id}">
+    <div class="pc-top"><span class="mono">${esc(p.code)}</span>${dueChip(o?.due_date, false)}</div>
+    <div class="pc-prod">${esc(pr?.name || '–')}</div>
+    <div class="pc-meta">${esc(o?.order_no)} · ${esc(o?.customer || '')}</div>
+    <div class="pc-foot">${foot}<span class="pips" aria-label="เสร็จ ${s.doneCount} จาก ${s.total} ขั้นตอน">${pips}</span></div>
+  </button>`;
+}
+function vFloor(){
+  const counts = {}; for(const k of STEP_ORDER) counts[k] = {w:0, q:0};
+  for(const p of S.data.pieces){ const s = M.state[p.id]; if(s.status==='working') counts[s.step].w++; else if(s.status==='waiting') counts[s.step].q++ }
+  const step = S.stationStep, st = STEPS[step];
+  const dueKey = p => M.order[p.order_id]?.due_date || '9999';
+  const here = S.data.pieces.filter(p => M.state[p.id].step===step);
+  const working = here.filter(p => M.state[p.id].status==='working').sort((a,b) => M.state[a.id].log.started_at < M.state[b.id].log.started_at ? -1 : 1);
+  const waiting = here.filter(p => M.state[p.id].status==='waiting').sort((a,b) => dueKey(a) < dueKey(b) ? -1 : dueKey(a) > dueKey(b) ? 1 : (a.code < b.code ? -1 : 1));
+  return `
+  <div class="floor-head">
+    <form class="scan" data-form="scan"><input id="scan" class="mono" placeholder="สแกน QR หรือพิมพ์รหัสชิ้นงาน" autocomplete="off" aria-label="รหัสชิ้นงาน"><button class="btn" type="submit">เปิดใบงาน</button></form>
+    <button class="btn" data-act="myWork">ผลงานของฉัน</button>
+  </div>
+  <div class="stepbar-wrap"><div class="stepbar" role="group" aria-label="เลือกจุดงาน">
+    ${STEP_ORDER.map(k => `<button class="stepbtn" data-act="pickStep" data-v="${k}" aria-pressed="${k===step}">
+      <span class="no">${STEPS[k].no}</span><span class="nm">${STEPS[k].name}</span>
+      ${STEPS[k].route ? `<span class="rt">เฉพาะเส้นทาง ${STEPS[k].route}</span>` : ''}
+      <span class="cnt"><b>${counts[k].w}</b> กำลังทำ · <b>${counts[k].q}</b> รอ</span></button>`).join('')}
+  </div></div>
+  ${!working.length && !waiting.length ? `<section class="section" id="queue">
+    <div class="sec-head"><h2><span class="stepno">${st.no}</span>${st.name}</h2><span class="muted">${st.hint}</span></div>
+    ${emptyStepHint(step, counts)}
+  </section>` : `
+  <section class="section" id="queue">
+    <div class="sec-head"><h2><span class="stepno">${st.no}</span>${st.name} · กำลังทำ<span class="count">${working.length} ชิ้น</span></h2><span class="muted">${st.hint}</span></div>
+    ${working.length ? `<div class="cards">${working.map(pieceCard).join('')}</div>` : `<div class="empty">ยังไม่มีใครกำลังทำ · แตะชิ้นงานในคิวด้านล่างแล้วกด "เริ่มงาน"</div>`}
+  </section>
+  <section class="section">
+    <div class="sec-head"><h2>รอทำ<span class="count">${waiting.length} ชิ้น · เรียงตามวันกำหนดส่ง</span></h2></div>
+    ${waiting.length ? `<div class="cards">${waiting.map(pieceCard).join('')}</div>` : `<div class="empty">ไม่มีชิ้นงานรอในขั้นตอนนี้</div>`}
+  </section>`}`;
+}
+function emptyStepHint(step, counts){
+  const where = STEP_ORDER.filter(k => k!==step && (counts[k].w + counts[k].q) > 0)
+    .map(k => `<button class="chip chip-btn" data-act="pickStep" data-v="${k}">${STEPS[k].no} ${STEPS[k].name} · ${counts[k].w + counts[k].q} ชิ้น</button>`).join('');
+  const first = step==='S1';
+  return `<div class="empty-act">
+    <p><b>ยังไม่มีงานรอ${STEPS[step].name}</b></p>
+    <p>${first ? 'งานใหม่จะเข้าคิวที่ขั้นนี้ทันทีเมื่อรับออเดอร์ ระบบสร้างใบงานให้ทุกชิ้น' : 'งานจะเข้ามาที่ขั้นนี้เมื่อขั้นก่อนหน้าบันทึกเสร็จ'}</p>
+    ${first ? `<button class="btn btn-primary" data-act="floorNewOrder">+ รับออเดอร์ใหม่</button>` : ''}
+    ${where ? `<span class="eyebrow">ตอนนี้งานอยู่ที่ แตะเพื่อไปที่ขั้นนั้น</span><div class="chips-pick">${where}</div>` : ''}
+  </div>`;
+}
+
+/* ---------- ใบงาน (piece sheet) ---------- */
+function matOptions(sel, step){
+  const cats = STEPS[step]?.cats || [];
+  const order = [...cats, ...Object.keys(CAT_NAME).filter(c => !cats.includes(c))];
+  return order.map(c => {
+    const ms = S.data.materials.filter(m => m.category===c && (m.active !== false || m.id===sel));
+    if(!ms.length) return '';
+    return `<optgroup label="${CAT_NAME[c]}">${ms.map(m => `<option value="${m.id}" ${m.id===sel ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</optgroup>`;
+  }).join('');
+}
+function unitOptions(mat, sel){
+  if(!mat) return '';
+  if(mat.unit==='kg') return `<option value="kg" ${sel!=='g' ? 'selected' : ''}>กก.</option><option value="g" ${sel==='g' ? 'selected' : ''}>กรัม</option>`;
+  return `<option value="${mat.unit}">${UNIT_NAME[mat.unit] || mat.unit}</option>`;
+}
+function defaultMat(step){
+  const cats = STEPS[step]?.cats || [];
+  for(const c of cats){ const m = S.data.materials.find(x => x.category===c && x.active !== false); if(m) return m.id }
+  return S.data.materials.find(x => x.active !== false)?.id;
+}
+function matRow(r, step, layers){
+  const id = r.material_id || defaultMat(step), mat = M.material[id];
+  let unit = mat?.unit, val = r.qty;
+  if(mat?.unit==='kg' && val != null && num(val) < 1){ unit = 'g'; val = Math.round(num(val)*1000) }
+  else if(val != null) val = +num(val).toFixed(3);
+  return `<div class="mrow">${layers ? `<span class="layer-no">ชั้น </span>` : ''}
+    <select class="m-mat" aria-label="วัสดุ" data-step="${step}">${matOptions(id, step)}</select>
+    <input class="m-qty num" type="number" inputmode="decimal" step="any" min="0" value="${val ?? ''}" aria-label="ปริมาณ" placeholder="0">
+    <select class="m-unit" aria-label="หน่วย">${unitOptions(mat, unit)}</select>
+    <button type="button" class="icon-btn" data-act="delRow" aria-label="ลบแถว">×</button></div>`;
+}
+function matEditor(step, rows, key=''){
+  const layers = !!STEPS[step]?.layers;
+  return `<div class="mat-editor ${layers ? 'layers' : ''}" data-step="${step}" ${key ? `data-key="${key}"` : ''}>${rows.map(r => matRow(r, step, layers)).join('')}</div>
+    <div><button type="button" class="btn btn-sm" data-act="addMatRow" data-step="${step}" ${key ? `data-key="${key}"` : ''}>+ ${layers ? 'เพิ่มชั้นใยแก้ว' : 'เพิ่มวัสดุ'}</button></div>`;
+}
+function readMatRows(root){
+  const rows = []; let layer = 0; const layers = root.classList.contains('layers');
+  for(const r of root.querySelectorAll('.mrow')){
+    layer++;
+    const id = r.querySelector('.m-mat').value, q = parseFloat(r.querySelector('.m-qty').value), u = r.querySelector('.m-unit').value;
+    if(!id || !(q > 0)) continue;
+    const o = {material_id:id, qty: +(u==='g' ? q/1000 : q).toFixed(4)};
+    if(layers) o.layer = layer;
+    rows.push(o);
+  }
+  return rows;
+}
+function matsText(list){
+  if(!list || !list.length) return '–';
+  return list.map(m => { const mt = M.material[m.material_id]; return (m.layer ? 'ชั้น '+m.layer+' ' : '') + (mt ? mt.name : '?') + ' ' + fQty(m.qty, mt?.unit) }).join(' · ');
+}
+function seg(name, opts, sel, cls='', on=''){
+  return `<div class="seg ${cls}" data-name="${name}" ${on ? `data-on="${on}"` : ''} role="group">${opts.map(([v,l]) => `<button type="button" data-act="seg" data-v="${esc(v)}" aria-pressed="${String(v)===String(sel)}">${esc(l)}</button>`).join('')}</div>`;
+}
+function readSeg(name){ const b = document.querySelector(`.seg[data-name="${name}"] button[aria-pressed="true"]`); return b ? b.dataset.v : null }
+function routeTrack(p, s){
+  return `<ol class="track">${s.route.map(st => {
+    const l = s.done.get(st); const cur = (s.status==='working' || s.status==='waiting') && s.step===st;
+    const meta = l ? `${esc(wName(l.finished_by || l.worker_id))} · ${fMins(logMins(l))}` : (cur ? (s.status==='working' ? 'กำลังทำ' : 'ขั้นถัดไป') : '');
+    return `<li class="tk ${l ? 'done' : ''} ${cur ? 'cur' : ''}"><span class="tk-no">${l ? '✓ ' : ''}${STEPS[st].no}</span><span class="tk-nm">${STEPS[st].name}</span>${meta ? `<span class="tk-meta">${meta}</span>` : ''}</li>`;
+  }).join('')}</ol>`;
+}
+function stdLine(p, step){
+  const sd = stdFor(p, step);
+  if(!sd) return `<div class="std-line muted">ยังไม่ได้ตั้งสูตรมาตรฐานของขั้นตอนนี้</div>`;
+  return `<div class="std-line">มาตรฐาน: <b>${fMins(num(sd.minutes))}</b>${sd.passes ? ` · <b>${sd.passes} เที่ยว</b>` : ''}${sd.materials && sd.materials.length ? ' · ' + esc(matsText(sd.materials)) : ''}</div>`;
+}
+function shPiece(id){
+  const p = M.piece[id]; if(!p) return sheetHead('ไม่พบชิ้นงาน','') + `<div class="sheet-body"><div class="empty">ไม่พบชิ้นงานนี้</div></div>`;
+  const s = M.state[p.id], pr = M.product[p.product_id], o = M.order[p.order_id];
+  let action = '';
+  if(s.status==='waiting'){
+    const st = STEPS[s.step];
+    action = `<div class="panel action"><span class="eyebrow">ขั้นตอนถัดไป</span>
+      <h3><span class="stepno">${st.no}</span>${st.name}</h3><div class="ink2">${st.hint}</div>${stdLine(p, s.step)}
+      <div><button class="btn btn-primary btn-xl" data-act="startStep" data-id="${p.id}">เริ่มงาน</button></div></div>`;
+  } else if(s.status==='working'){
+    const st = STEPS[s.step], sd = stdFor(p, s.step) || {};
+    const rows = (sd.materials && sd.materials.length) ? sd.materials : (st.cats.some(c => c!=='other') ? [{}] : []);
+    const pv = sd.passes || st.defPass;
+    action = `<div class="panel action"><span class="eyebrow">กำลังทำ</span>
+      <h3><span class="stepno">${st.no}</span>${st.name}</h3>
+      <div class="ink2">${esc(wName(s.log.worker_id))} เริ่ม ${fDT(s.log.started_at)} · ผ่านไป <b data-since="${s.log.started_at}">${fMins(mins(s.log.started_at, nowISO()))}</b></div>
+      ${stdLine(p, s.step)}
+      ${st.passes ? `<div class="field"><span class="flabel">จำนวนเที่ยวที่พ่น</span>${seg('passes', st.passes.map(n => [n, n+' เที่ยว']), pv)}</div>` : ''}
+      <div class="field"><span class="flabel">${st.layers ? 'ใยแก้วแต่ละชั้น (เมตร)' : 'วัสดุที่ใช้จริง'}</span>
+        ${rows.length || st.cats.some(c => c!=='other') ? '' : `<span class="muted" style="font-size:.88rem">ขั้นตอนนี้ปกติไม่ต้องบันทึกวัสดุ เพิ่มได้ถ้าใช้</span>`}
+        ${matEditor(s.step, rows, 'log')}</div>
+      <div class="field"><label for="logNote">หมายเหตุ</label><textarea id="logNote" class="input" placeholder="เช่น ปัญหาที่พบ อุณหภูมิ ความชื้น"></textarea></div>
+      <div class="field"><label for="logPhoto">รูปหน้างาน (ถ้ามี)</label><input id="logPhoto" type="file" accept="image/*" capture="environment" class="input"></div>
+      <div class="row"><button class="btn btn-primary btn-xl" data-act="finishStep" data-id="${s.log.id}">บันทึกเสร็จ</button>
+        <button class="btn btn-ghost" data-act="cancelStep" data-id="${s.log.id}">ยกเลิกการเริ่ม (กดผิด)</button></div></div>`;
+  } else if(s.status==='qc'){
+    action = `<div class="panel action"><span class="eyebrow">ทุกขั้นตอนเสร็จแล้ว</span><h3>รอ QC ขั้นสุดท้าย</h3>
+      <div><button class="btn btn-primary" data-act="openQC" data-id="${p.id}" data-point="S7">บันทึก QC</button></div></div>`;
+  } else if(s.status==='done'){
+    action = `<div class="panel"><span class="chip good" style="align-self:flex-start"><span class="dot"></span>เสร็จ พร้อมส่ง</span><div class="ink2">ผ่าน QC เมื่อ ${fDT(s.doneAt)}</div></div>`;
+  } else {
+    action = `<div class="panel"><span class="chip bad" style="align-self:flex-start"><span class="dot"></span>ชิ้นงานเสีย</span><div class="ink2">${esc(p.scrap_reason || '')}</div></div>`;
+  }
+  const events = [
+    ...s.logs.map(l => ({t:l.started_at, h:`<span class="t">${fDT(l.started_at)}</span><span class="d"><b>${esc(stepLabel(l.step))}</b> · ${esc(wName(l.finished_by || l.worker_id))}${l.finished_at ? ' · '+fMins(logMins(l)) : ''}${l.passes ? ' · '+l.passes+' เที่ยว' : ''}
+        ${l.materials && l.materials.length ? `<br><span class="muted">${esc(matsText(l.materials))}</span>` : ''}${l.note ? `<br><span class="ink2">${esc(l.note)}</span>` : ''}</span>
+        <span>${{in_progress:'<span class="chip info">กำลังทำ</span>', done:'<span class="chip good">เสร็จ</span>', cancelled:'<span class="chip">ยกเลิก</span>', reworked:'<span class="chip warn">ถูกสั่งแก้</span>'}[l.status]}${l.photo_url ? `<br><img class="thumb" src="${esc(l.photo_url)}" alt="รูปหน้างาน">` : ''}</span>`})),
+    ...s.qcs.map(q => ({t:q.created_at, h:`<span class="t">${fDT(q.created_at)}</span><span class="d"><b>QC ${esc(QC_POINT_NAME[q.step] || stepLabel(q.step))}</b> · ${esc(wName(q.inspector_id))}${q.defect ? ' · '+esc(q.defect) : ''}${q.rework_step ? ' · แก้ที่ '+esc(stepLabel(q.rework_step)) : ''}${q.note ? `<br><span class="ink2">${esc(q.note)}</span>` : ''}</span>
+        <span>${{pass:'<span class="chip good">ผ่าน</span>', rework:'<span class="chip warn">ส่งแก้</span>', scrap:'<span class="chip bad">เสีย</span>'}[q.result]}${q.photo_url ? `<br><img class="thumb" src="${esc(q.photo_url)}" alt="รูป QC">` : ''}</span>`}))
+  ].sort((a,b) => a.t < b.t ? 1 : -1);
+  const qcBtn = rank() >= 2 && s.status!=='scrap' ? `<button class="btn btn-sm" data-act="openQC" data-id="${p.id}">บันทึก QC</button>` : '';
+  return sheetHead(`<span class="mono">${esc(p.code)}</span>`, `${esc(pr?.name)} · ออเดอร์ ${esc(o?.order_no)} · ${esc(o?.customer || '')}`, qcBtn) + `
+  <div class="sheet-body">
+    <div class="row">${dueChip(o?.due_date, s.status==='done')}<span class="chip info">เส้นทาง ${p.route} · ${ROUTE_NAME[p.route]}</span><span class="chip">เสร็จ ${s.doneCount}/${s.total} ขั้นตอน</span></div>
+    ${routeTrack(p, s)}
+    ${action}
+    <section class="section"><h3>ประวัติใบงาน</h3>
+      ${events.length ? `<div class="hist">${events.map(e => `<div class="hist-item">${e.h}</div>`).join('')}</div>` : `<div class="empty">ยังไม่มีการบันทึก</div>`}</section>
+  </div>`;
+}
+
+/* ---------- ผลงานของฉัน ---------- */
+function shMyWork(wid){
+  const w = M.worker[wid];
+  const logs = S.data.step_logs.filter(l => (l.finished_by || l.worker_id)===wid && l.finished_at && (l.status==='done' || l.status==='reworked')).sort((a,b) => a.finished_at < b.finished_at ? 1 : -1);
+  const t0 = new Date(); t0.setHours(0,0,0,0); const w0 = t0.getTime() - 6*86400000;
+  const agg = from => { const xs = logs.filter(l => toDate(l.finished_at) >= from); let m=0, sm=0, am=0;
+    for(const l of xs){ const d = logMins(l); m += d; const p = M.piece[l.piece_id]; const sd = p && stdFor(p, l.step); if(sd && num(sd.minutes)){ sm += num(sd.minutes); am += d } }
+    return {n:xs.length, m, eff: am ? sm/am*100 : null, rework: xs.filter(l => l.status==='reworked').length} };
+  const td = agg(t0), wk = agg(new Date(w0));
+  const active = S.data.step_logs.filter(l => l.worker_id===wid && l.status==='in_progress');
+  return sheetHead(`ผลงานของ ${esc(w?.name)}`, ROLE_NAME[w?.role] || '') + `<div class="sheet-body">
+    <div class="kpis">
+      <div class="kpi"><span class="eyebrow">วันนี้</span><span class="v">${td.n}</span><span class="s">ขั้นตอนที่เสร็จ · ${fMins(td.m)}</span></div>
+      <div class="kpi"><span class="eyebrow">7 วันล่าสุด</span><span class="v">${wk.n}</span><span class="s">ขั้นตอน · ${fMins(wk.m)}</span></div>
+      <div class="kpi"><span class="eyebrow">เทียบเวลามาตรฐาน 7 วัน</span><span class="v">${wk.eff == null ? '–' : fmt(wk.eff)+'%'}</span><span class="s">100% = ตรงมาตรฐาน · ส่งแก้ ${wk.rework} ครั้ง</span></div>
+    </div>
+    ${active.length ? `<section class="section"><h3>กำลังทำอยู่</h3><div class="cards">${active.map(l => pieceCard(M.piece[l.piece_id])).join('')}</div></section>` : ''}
+    <section class="section"><h3>งานล่าสุด</h3>
+    ${logs.length ? `<div class="table-wrap"><table><thead><tr><th>เสร็จเมื่อ</th><th>ชิ้นงาน</th><th>ขั้นตอน</th><th class="r">ใช้เวลา</th><th class="r">มาตรฐาน</th><th>สถานะ</th></tr></thead><tbody>
+      ${logs.slice(0,30).map(l => { const p = M.piece[l.piece_id]; const sd = p && stdFor(p, l.step);
+        return `<tr class="click" data-act="openPiece" data-id="${l.piece_id}"><td>${fDT(l.finished_at)}</td><td class="mono">${esc(p?.code)}</td><td>${esc(stepLabel(l.step))}</td><td class="r num">${fMins(logMins(l))}</td><td class="r num muted">${sd ? fMins(num(sd.minutes)) : '–'}</td><td>${l.status==='reworked' ? '<span class="chip warn">ถูกสั่งแก้</span>' : '<span class="chip good">เสร็จ</span>'}</td></tr>` }).join('')}
+    </tbody></table></div>` : `<div class="empty">ยังไม่มีงานที่บันทึก</div>`}</section></div>`;
+}
+
+/* =====================================================================
+   VIEW: QC
+   ===================================================================== */
+function vQC(){
+  const pend = qcPending();
+  const from = Date.now() - 30*86400000;
+  const recent = S.data.qc_records.filter(q => toDate(q.created_at) >= from).sort((a,b) => a.created_at < b.created_at ? 1 : -1);
+  const defects = {}; for(const q of recent) if(q.result!=='pass' && q.defect) defects[q.defect] = (defects[q.defect]||0) + 1;
+  const dmax = Math.max(1, ...Object.values(defects));
+  const pass = recent.filter(q => q.result==='pass').length;
+  const group = pt => pend.filter(x => x.point===pt);
+  const qcCard = x => { const p = x.piece, pr = M.product[p.product_id], o = M.order[p.order_id];
+    return `<button class="pcard" data-act="openQC" data-id="${p.id}" data-point="${x.point}"><div class="pc-top"><span class="mono">${esc(p.code)}</span>${dueChip(o?.due_date,false)}</div>
+      <div class="pc-prod">${esc(pr?.name)}</div><div class="pc-meta">${esc(o?.order_no)} · เสร็จ ${esc(stepLabel(x.point))} ${fDT(x.at)}</div></button>` };
+  return `
+  ${QC_POINTS.map(pt => `<section class="section"><div class="sec-head"><h2>รอตรวจ ${QC_POINT_NAME[pt]}<span class="count">${group(pt).length} ชิ้น</span></h2></div>
+    ${group(pt).length ? `<div class="cards">${group(pt).map(qcCard).join('')}</div>` : `<div class="empty">ไม่มีชิ้นงานรอตรวจ</div>`}</section>`).join('')}
+  <div class="dash-grid">
+    <section class="section"><div class="sec-head"><h2>ผลตรวจ 30 วันล่าสุด</h2><span class="muted">ผ่าน ${pass} / ${recent.length} ครั้ง</span></div>
+      ${recent.length ? `<div class="table-wrap"><table><thead><tr><th>เวลา</th><th>ชิ้นงาน</th><th>จุดตรวจ</th><th>ผล</th><th>ตำหนิ</th><th>ผู้ตรวจ</th></tr></thead><tbody>
+      ${recent.slice(0,40).map(q => `<tr class="click" data-act="openPiece" data-id="${q.piece_id}"><td>${fDT(q.created_at)}</td><td class="mono">${esc(M.piece[q.piece_id]?.code)}</td><td>${esc(STEPS[q.step]?.no || q.step)}</td>
+        <td>${{pass:'<span class="chip good">ผ่าน</span>', rework:'<span class="chip warn">ส่งแก้</span>', scrap:'<span class="chip bad">เสีย</span>'}[q.result]}</td><td>${esc(q.defect || '–')}</td><td>${esc(wName(q.inspector_id))}</td></tr>`).join('')}
+      </tbody></table></div>` : `<div class="empty">ยังไม่มีผลตรวจในช่วงนี้</div>`}</section>
+    <section class="section"><div class="sec-head"><h2>ตำหนิที่พบบ่อย</h2><span class="muted">30 วัน</span></div>
+      <div class="panel">${Object.keys(defects).length ? `<div class="wip">${Object.entries(defects).sort((a,b) => b[1]-a[1]).map(([d,n]) => `<div class="wip-row" title="${esc(d)}: ${n} ครั้ง"><span>${esc(d)}</span><div class="wip-track"><span class="s-qc" style="width:${n/dmax*100}%"></span></div><span class="num r">${n}</span></div>`).join('')}</div>` : `<span class="muted">ยังไม่พบตำหนิ</span>`}</div></section>
+  </div>`;
+}
+function shQC(pid, point){
+  const p = M.piece[pid], s = M.state[pid], pr = M.product[p.product_id];
+  const pt = point || (s.status==='qc' ? 'S7' : (s.done.has('S3') && !s.done.has('S7') ? 'S3' : 'S7'));
+  const ri = s.route.indexOf(pt);
+  const reworkOpts = s.route.filter((x,i) => i <= Math.max(ri, 0) || s.done.has(x));
+  const defRework = pt==='S7' ? 'S6' : 'S4';
+  return sheetHead(`QC <span class="mono">${esc(p.code)}</span>`, `${esc(pr?.name)} · เส้นทาง ${p.route}`) + `<div class="sheet-body">
+    ${routeTrack(p, s)}
+    <div class="panel action">
+      <div class="field"><label for="qc-point">จุดตรวจ</label><select id="qc-point" class="input">${s.route.map(x => `<option value="${x}" ${x===pt ? 'selected' : ''}>${esc(stepLabel(x))}${QC_POINT_NAME[x] ? ' — '+QC_POINT_NAME[x] : ''}</option>`).join('')}</select></div>
+      <div class="field"><span class="flabel">ผลการตรวจ</span>${seg('qcres', [['pass','ผ่าน'],['rework','ส่งแก้'],['scrap','ชิ้นงานเสีย']], 'pass', 'res', 'qcResChange')}</div>
+      <div id="qc-more" hidden>
+        <div class="field"><span class="flabel">ตำหนิที่พบ</span>${seg('defect', DEFECTS.map(d => [d,d]), '', 'small')}</div>
+        <div class="field" id="qc-rework-f" style="margin-top:12px"><label for="qc-rework">กลับไปแก้ที่ขั้นตอน</label>
+          <select id="qc-rework" class="input">${reworkOpts.map(x => `<option value="${x}" ${x===(reworkOpts.includes(defRework) ? defRework : reworkOpts[reworkOpts.length-1]) ? 'selected' : ''}>${esc(stepLabel(x))}</option>`).join('')}</select>
+          <span class="muted" style="font-size:.85rem">ขั้นตอนนี้และขั้นตอนหลังจากนี้จะถูกเปิดให้ทำใหม่ เวลาและวัสดุเดิมยังนับเป็นต้นทุน</span></div>
+        <label class="row" id="qc-replace-f" style="margin-top:12px" hidden><input type="checkbox" id="qc-replace" checked style="width:22px;height:22px"> สร้างชิ้นงานทดแทนในออเดอร์เดิม</label>
+      </div>
+      <div class="field"><label for="qc-note">หมายเหตุ</label><textarea id="qc-note" class="input" placeholder="ตำแหน่ง ขนาดตำหนิ วิธีแก้"></textarea></div>
+      <div class="field"><label for="qc-photo">รูปถ่าย</label><input id="qc-photo" type="file" accept="image/*" capture="environment" class="input"></div>
+      <div><button class="btn btn-primary btn-xl" data-act="saveQC" data-id="${p.id}">บันทึกผล QC</button></div>
+    </div></div>`;
+}
+
+/* =====================================================================
+   VIEW: ออเดอร์
+   ===================================================================== */
+function vOrders(){
+  const list = S.data.orders.slice().sort((a,b) => a.received_date < b.received_date ? 1 : a.received_date > b.received_date ? -1 : (a.order_no < b.order_no ? 1 : -1))
+    .map(o => ({o, st: orderStats(o)}))
+    .filter(x => S.orderFilter==='all' || (S.orderFilter==='open' ? !x.st.complete : x.st.complete));
+  return `<section class="section">
+    <div class="sec-head"><h2>ออเดอร์</h2><div class="row">${seg('ofilter', [['open','กำลังผลิต'],['done','ครบแล้ว'],['all','ทั้งหมด']], S.orderFilter, 'small', 'orderFilter')}
+      <button class="btn btn-primary" data-act="newOrder">+ รับออเดอร์ใหม่</button></div></div>
+    ${list.length ? `<div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>ลูกค้า</th><th>รับเมื่อ</th><th>กำหนดส่ง</th><th>รายการ</th><th>ความคืบหน้า</th><th class="r">เสร็จ/สั่ง</th><th>สถานะ</th></tr></thead><tbody>
+    ${list.map(({o, st}) => `<tr class="click" data-act="openOrder" data-id="${o.id}"><td class="mono">${esc(o.order_no)}</td><td>${esc(o.customer)}</td><td>${fDate(o.received_date)}</td><td>${fDate(o.due_date)}</td>
+      <td class="wrap">${(M.itemsByOrder[o.id]||[]).map(i => esc(M.product[i.product_id]?.name)+' ×'+i.qty).join(', ')}</td>
+      <td><div class="bar"><span style="width:${st.target ? Math.min(100, st.done/st.target*100) : 0}%"></span></div></td>
+      <td class="r num">${st.done}/${st.target}${st.scrap ? ` <span class="muted">(เสีย ${st.scrap})</span>` : ''}</td><td>${dueChip(o.due_date, st.complete)}</td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">ไม่มีออเดอร์ในกลุ่มนี้</div>`}</section>`;
+}
+function nextOrderNo(){
+  const d = new Date(), pre = 'IF' + String(d.getFullYear()).slice(2) + pad(d.getMonth()+1) + '-';
+  const n = S.data.orders.filter(o => o.order_no.startsWith(pre)).map(o => parseInt(o.order_no.slice(pre.length)) || 0);
+  return pre + String((n.length ? Math.max(...n) : 0) + 1).padStart(3,'0');
+}
+function itemRow(){
+  const prods = S.data.products.filter(p => p.active !== false);
+  const first = prods[0];
+  return `<div class="irow"><select class="i-prod" aria-label="สินค้า">${prods.map(p => `<option value="${p.id}">${esc(p.code)} · ${esc(p.name)}</option>`).join('')}</select>
+    <input class="i-qty num" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="จำนวน">
+    <select class="i-route" aria-label="เส้นทาง"><option value="A" ${first?.default_route!=='B' ? 'selected' : ''}>A · เก็บผิว</option><option value="B" ${first?.default_route==='B' ? 'selected' : ''}>B · พ่นเรซินเจลโค้ตเพิ่ม</option></select>
+    <button type="button" class="icon-btn" data-act="delRow" aria-label="ลบรายการ">×</button></div>`;
+}
+function shOrderForm(){
+  return sheetHead('รับออเดอร์ใหม่', 'ระบบจะสร้างรหัสชิ้นงานและ QR ให้ทุกชิ้นอัตโนมัติ') + `<div class="sheet-body"><div class="panel">
+    <div class="grid2">
+      <div class="field"><label for="o-no">เลขที่ออเดอร์</label><input id="o-no" class="input mono" value="${nextOrderNo()}"></div>
+      <div class="field"><label for="o-cust">ลูกค้า</label><input id="o-cust" class="input" placeholder="ชื่อลูกค้า/บริษัท"></div>
+      <div class="field"><label for="o-recv">วันที่รับออเดอร์</label><input id="o-recv" type="date" class="input" value="${localDate()}"></div>
+      <div class="field"><label for="o-due">กำหนดส่ง</label><input id="o-due" type="date" class="input"></div>
+    </div>
+    <div class="field"><span class="flabel">รายการสินค้า · จำนวน · เส้นทางงานผิว</span><div id="o-items" class="mat-editor">${itemRow()}</div>
+      <div><button type="button" class="btn btn-sm" data-act="addItemRow">+ เพิ่มรายการ</button></div></div>
+    <div class="field"><label for="o-note">หมายเหตุ</label><textarea id="o-note" class="input"></textarea></div>
+    <div><button class="btn btn-primary btn-xl" data-act="saveOrder">บันทึกออเดอร์</button></div>
+  </div></div>`;
+}
+function shOrder(oid){
+  const o = M.order[oid]; const st = orderStats(o);
+  const ps = (M.piecesByOrder[oid]||[]).slice().sort((a,b) => a.code < b.code ? -1 : 1);
+  const stTxt = p => { const s = M.state[p.id];
+    return {working:`<span class="chip info">กำลังทำ ${esc(stepLabel(s.step))}</span>`, waiting:`<span class="chip">รอ ${esc(stepLabel(s.step))}</span>`, qc:'<span class="chip warn">รอ QC</span>', done:'<span class="chip good">พร้อมส่ง</span>', scrap:'<span class="chip bad">เสีย</span>'}[s.status] };
+  return sheetHead(`ออเดอร์ <span class="mono">${esc(o.order_no)}</span>`, `${esc(o.customer)} · รับ ${fDate(o.received_date)} · กำหนดส่ง ${fDate(o.due_date)}`,
+    `<button class="btn btn-sm" data-act="openLabels" data-id="${oid}">ป้าย QR</button>`) + `<div class="sheet-body">
+    <div class="row">${dueChip(o.due_date, st.complete)}<span class="chip">เสร็จ ${st.done}/${st.target}</span>${st.scrap ? `<span class="chip bad">เสีย ${st.scrap}</span>` : ''}</div>
+    ${o.note ? `<div class="panel ink2">${esc(o.note)}</div>` : ''}
+    <div class="table-wrap"><table><thead><tr><th>ชิ้นงาน</th><th>สินค้า</th><th>เส้นทาง</th><th>สถานะ</th><th class="r">ขั้นตอน</th></tr></thead><tbody>
+      ${ps.map(p => `<tr class="click" data-act="openPiece" data-id="${p.id}"><td class="mono">${esc(p.code)}</td><td>${esc(M.product[p.product_id]?.name)}</td><td>${p.route}</td><td>${stTxt(p)}</td><td class="r num">${M.state[p.id].doneCount}/${M.state[p.id].total}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+function qrSvg(text){
+  if(typeof qrcode === 'undefined') return `<div class="mono" style="width:96px;font-size:.7rem">${esc(text)}</div>`;
+  const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({cellSize:4, margin:2, scalable:true, alt:text});
+}
+function shLabels(oid){
+  const o = M.order[oid]; const ps = (M.piecesByOrder[oid]||[]).filter(p => !p.scrapped).sort((a,b) => a.code < b.code ? -1 : 1);
+  return sheetHead(`ป้าย QR · <span class="mono">${esc(o.order_no)}</span>`, `${ps.length} ป้าย สำหรับติดที่แม่พิมพ์หรือชิ้นงาน`, FRAMED ? '' : `<button class="btn btn-sm btn-primary" data-act="print">พิมพ์ป้าย</button>`) +
+  `<div class="sheet-body"><div class="labels">${ps.map(p => `<div class="label">${qrSvg(p.code)}<div><div class="lc">${esc(p.code)}</div><div class="lp">${esc(M.product[p.product_id]?.name)}</div><div class="lr">เส้นทาง ${p.route} · ส่ง ${fDate(o.due_date)}</div></div></div>`).join('')}</div>
+  ${FRAMED ? `<p class="muted" style="font-size:.85rem">การพิมพ์ป้ายใช้ได้เมื่อเปิดแอปจากลิงก์ที่ติดตั้งจริง</p>` : ''}</div>`;
+}
+
+/* =====================================================================
+   VIEW: สต็อกวัสดุ
+   ===================================================================== */
+function vStock(){
+  const lv = stockLevels();
+  const mats = S.data.materials.slice().sort((a,b) => Object.keys(CAT_NAME).indexOf(a.category) - Object.keys(CAT_NAME).indexOf(b.category) || a.code.localeCompare(b.code));
+  const low = mats.filter(m => m.active !== false && lv[m.id].onHand <= num(m.reorder_level)).length;
+  const moves = [
+    ...S.data.stock_receipts.map(r => ({t:r.created_at, mat:r.material_id, q:num(r.qty), what: r.kind==='adjust' ? 'ปรับยอด' : 'รับเข้า', who:r.worker_id, ref:r.note || ''})),
+    ...S.data.step_logs.filter(l => l.status==='done' || l.status==='reworked').flatMap(l => (l.materials||[]).map(m => ({t:l.finished_at, mat:m.material_id, q:-num(m.qty), what:'ใช้ '+stepLabel(l.step), who:l.finished_by || l.worker_id, ref:M.piece[l.piece_id]?.code || '', pid:l.piece_id})))
+  ].sort((a,b) => a.t < b.t ? 1 : -1).slice(0,40);
+  return `<section class="section">
+    <div class="sec-head"><h2>วัสดุคงเหลือ${low ? `<span class="count" style="color:var(--bad)">ต่ำกว่าจุดสั่งซื้อ ${low} รายการ</span>` : ''}</h2>
+      <button class="btn btn-primary" data-act="stockForm">+ รับวัสดุเข้า / ปรับยอด</button></div>
+    <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>วัสดุ</th><th>หมวด</th><th class="r">คงเหลือ</th><th class="r">จุดสั่งซื้อ</th><th class="r">ใช้ 30 วัน</th><th class="r">มูลค่าคงเหลือ</th><th>สถานะ</th></tr></thead><tbody>
+    ${mats.map(m => { const x = lv[m.id]; const isLow = x.onHand <= num(m.reorder_level);
+      return `<tr class="click" data-act="stockForm" data-id="${m.id}"><td class="mono">${esc(m.code)}</td><td>${esc(m.name)}</td><td>${CAT_NAME[m.category]}</td>
+      <td class="r num"><b>${fQty(x.onHand, m.unit)}</b></td><td class="r num muted">${fQty(m.reorder_level, m.unit)}</td><td class="r num">${fQty(x.used30, m.unit)}</td>
+      <td class="r num">${baht(Math.max(0,x.onHand) * num(m.unit_cost))}</td><td>${m.active === false ? '<span class="chip">เลิกใช้</span>' : isLow ? '<span class="chip bad">ต่ำ</span>' : '<span class="chip good">พอ</span>'}</td></tr>` }).join('')}
+    </tbody></table></div></section>
+  <section class="section"><h2>ความเคลื่อนไหวล่าสุด</h2>
+    <div class="table-wrap"><table><thead><tr><th>เวลา</th><th>วัสดุ</th><th>รายการ</th><th class="r">จำนวน</th><th>โดย</th><th>อ้างอิง</th></tr></thead><tbody>
+    ${moves.map(x => { const m = M.material[x.mat]; return `<tr ${x.pid ? `class="click" data-act="openPiece" data-id="${x.pid}"` : ''}><td>${fDT(x.t)}</td><td>${esc(m?.name)}</td><td>${esc(x.what)}</td>
+      <td class="r num ${x.q < 0 ? '' : 'var-dn'}">${x.q > 0 ? '+' : '−'}${fQty(Math.abs(x.q), m?.unit)}</td><td>${esc(wName(x.who))}</td><td class="mono">${esc(x.ref)}</td></tr>` }).join('')}
+    </tbody></table></div></section>`;
+}
+function shStockForm(mid){
+  const m = mid ? M.material[mid] : S.data.materials[0];
+  return sheetHead('รับวัสดุเข้า / ปรับยอด', 'ยอดใช้จริงหักอัตโนมัติจากการบันทึกงานหน้างาน') + `<div class="sheet-body"><div class="panel">
+    <div class="field"><label for="st-mat">วัสดุ</label><select id="st-mat" class="input m-mat" data-step="">${matOptions(m?.id, '')}</select></div>
+    <div class="field"><span class="flabel">ประเภท</span>${seg('stkind', [['receive','รับเข้า'],['adjust','ปรับยอด (+/−)']], 'receive')}</div>
+    <div class="grid2"><div class="field"><label for="st-qty">จำนวน</label><input id="st-qty" class="input num" type="number" step="any" inputmode="decimal" placeholder="เช่น 20 หรือ −1.5 ตอนปรับยอด"></div>
+      <div class="field"><label for="st-unit">หน่วย</label><select id="st-unit" class="input m-unit">${unitOptions(m, 'kg')}</select></div>
+      <div class="field"><label for="st-cost">ราคาต่อหน่วยที่ซื้อ (บาท)</label><input id="st-cost" class="input num" type="number" step="any" inputmode="decimal" value="${m ? num(m.unit_cost) : ''}"></div></div>
+    <div class="field"><label for="st-note">หมายเหตุ / เลขที่ใบส่งของ</label><input id="st-note" class="input"></div>
+    <div><button class="btn btn-primary btn-xl" data-act="saveStock">บันทึก</button></div></div></div>`;
+}
+
+/* =====================================================================
+   VIEW: ผู้บริหาร
+   ===================================================================== */
+function vDash(){
+  const t0 = new Date(); t0.setHours(0,0,0,0);
+  const from = t0.getTime() - (S.dashRange - 1) * 86400000;
+  const inR = s => s && toDate(s) >= from;
+  const P = S.data.pieces;
+  const st = p => M.state[p.id];
+  const wip = P.filter(p => ['waiting','working','qc'].includes(st(p).status));
+  const doneR = P.filter(p => st(p).status==='done' && inR(st(p).doneAt));
+  const orders = S.data.orders.map(o => ({o, s: orderStats(o)}));
+  const open = orders.filter(x => !x.s.complete);
+  const overdue = open.filter(x => x.o.due_date && daysTo(x.o.due_date) < 0);
+  const qcR = S.data.qc_records.filter(q => inR(q.created_at));
+  const qPass = qcR.filter(q => q.result==='pass').length;
+  const ordR = S.data.orders.filter(o => toDate(o.received_date) >= from);
+  const qtyR = ordR.reduce((a,o) => a + (M.itemsByOrder[o.id]||[]).reduce((b,i) => b + num(i.qty), 0), 0);
+
+  // WIP by step
+  const rows = STEP_ORDER.map(k => ({k, w: wip.filter(p => st(p).status==='working' && st(p).step===k).length, q: wip.filter(p => st(p).status==='waiting' && st(p).step===k).length}));
+  const qcN = qcPending().length;
+  const wmax = Math.max(1, ...rows.map(r => r.w + r.q), qcN);
+
+  // logs in range
+  const logsR = S.data.step_logs.filter(l => (l.status==='done' || l.status==='reworked') && inR(l.finished_at));
+  const perW = {}, perS = {}, perM = {};
+  for(const l of logsR){
+    const wid = l.finished_by || l.worker_id, d = logMins(l), p = M.piece[l.piece_id], sd = p && stdFor(p, l.step);
+    const a = perW[wid] ||= {n:0, m:0, sm:0, am:0, rw:0, pcs:new Set(), last:''};
+    a.n++; a.m += d; a.pcs.add(l.piece_id); if(l.status==='reworked') a.rw++; if(l.finished_at > a.last) a.last = l.finished_at;
+    if(sd && num(sd.minutes)){ a.sm += num(sd.minutes); a.am += d }
+    const b = perS[l.step] ||= {n:0, m:0, sm:0, sn:0}; b.n++; b.m += d; if(sd && num(sd.minutes)){ b.sm += num(sd.minutes); b.sn++ }
+    for(const x of l.materials||[]){ const c = perM[x.material_id] ||= {act:0, std:0}; c.act += num(x.qty) }
+    for(const x of (sd && sd.materials) || []){ const c = perM[x.material_id] ||= {act:0, std:0}; c.std += num(x.qty) }
+  }
+  const activeNow = {}; for(const l of S.data.step_logs) if(l.status==='in_progress') activeNow[l.worker_id] = l;
+
+  // cost per finished piece
+  const costs = doneR.map(p => { let mat = 0, lab = 0, m = 0;
+    for(const l of st(p).logs) if(l.status==='done' || l.status==='reworked'){ const c = logCost(l); mat += c.mat; lab += c.labor; m += c.mins }
+    const sc = stdCost(p.product_id, p.route); return {p, mat, lab, m, tot: mat+lab, std: sc.mat + sc.labor} })
+    .sort((a,b) => st(a.p).doneAt < st(b.p).doneAt ? 1 : -1);
+  const varCell = (act, std) => { if(!std) return '<td class="r muted">–</td>'; const v = (act/std - 1)*100; return `<td class="r num ${v > 5 ? 'var-up' : v < -5 ? 'var-dn' : ''}">${v > 0 ? '+' : ''}${fmt(v)}%</td>` };
+
+  // feed
+  const feed = [
+    ...S.data.step_logs.filter(l => l.status!=='cancelled').map(l => ({t: l.finished_at || l.started_at, h:`<b>${esc(wName(l.finished_by || l.worker_id))}</b> ${l.finished_at ? 'เสร็จ' : 'เริ่ม'} ${esc(stepLabel(l.step))} · <span class="mono">${esc(M.piece[l.piece_id]?.code)}</span>`, pid:l.piece_id})),
+    ...S.data.qc_records.map(q => ({t:q.created_at, h:`<b>${esc(wName(q.inspector_id))}</b> ตรวจ QC ${{pass:'ผ่าน', rework:'ส่งแก้', scrap:'ชิ้นงานเสีย'}[q.result]} · <span class="mono">${esc(M.piece[q.piece_id]?.code)}</span>`, pid:q.piece_id})),
+    ...S.data.orders.map(o => ({t:o.created_at, h:`รับออเดอร์ <span class="mono">${esc(o.order_no)}</span> · ${esc(o.customer)}`}))
+  ].sort((a,b) => a.t < b.t ? 1 : -1).slice(0,14);
+
+  return `
+  <div class="sec-head"><h2>ภาพรวมการผลิต</h2><div class="row">${seg('range', [[1,'วันนี้'],[7,'7 วัน'],[30,'30 วัน'],[90,'90 วัน']], S.dashRange, 'small', 'dashRange')}
+    ${FRAMED ? '' : `<button class="btn btn-sm" data-act="exportCSV">ส่งออก CSV</button>`}</div></div>
+  <div class="kpis">
+    <div class="kpi"><span class="eyebrow">ชิ้นงานในสายผลิต</span><span class="v">${wip.length}</span><span class="s">รอ QC ${qcN} จุดตรวจ</span></div>
+    <div class="kpi"><span class="eyebrow">เสร็จพร้อมส่ง · ช่วงนี้</span><span class="v">${doneR.length}</span><span class="s">ชิ้นที่ผ่าน QC ขั้นสุดท้าย</span></div>
+    <div class="kpi"><span class="eyebrow">ออเดอร์ที่ยังไม่ครบ</span><span class="v">${open.length}</span><span class="s" ${overdue.length ? 'style="color:var(--bad);font-weight:600"' : ''}>เลยกำหนด ${overdue.length} ออเดอร์</span></div>
+    <div class="kpi"><span class="eyebrow">รับออเดอร์ใหม่ · ช่วงนี้</span><span class="v">${ordR.length}</span><span class="s">รวม ${qtyR} ชิ้น</span></div>
+    <div class="kpi"><span class="eyebrow">ผ่าน QC ครั้งแรก</span><span class="v">${qcR.length ? fmt(qPass/qcR.length*100)+'%' : '–'}</span><span class="s">ส่งแก้ ${qcR.filter(q => q.result==='rework').length} · เสีย ${qcR.filter(q => q.result==='scrap').length}</span></div>
+  </div>
+  <div class="dash-grid">
+    <section class="section"><div class="sec-head"><h3>งานค้างแต่ละขั้นตอน (ตอนนี้)</h3>
+      <div class="legend"><span><i class="s-work"></i>กำลังทำ</span><span><i class="s-wait"></i>รอทำ</span><span><i class="s-qc"></i>รอ QC</span></div></div>
+      <div class="panel"><div class="wip">
+      ${rows.map(r => `<div class="wip-row" title="${esc(stepLabel(r.k))}: กำลังทำ ${r.w} · รอ ${r.q}"><span>${esc(stepLabel(r.k))}</span><div class="wip-track">${r.w ? `<span class="s-work" style="width:${r.w/wmax*100}%"></span>` : ''}${r.q ? `<span class="s-wait" style="width:${r.q/wmax*100}%"></span>` : ''}</div><span class="num r">${r.w + r.q}</span></div>`).join('')}
+      <div class="wip-row" title="รอ QC: ${qcN}"><span>QC รอตรวจ</span><div class="wip-track">${qcN ? `<span class="s-qc" style="width:${qcN/wmax*100}%"></span>` : ''}</div><span class="num r">${qcN}</span></div>
+      </div></div></section>
+    <section class="section"><h3>ออเดอร์ที่ยังไม่ครบ</h3>
+      ${open.length ? `<div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>ลูกค้า</th><th>ส่ง</th><th>คืบหน้า</th><th class="r">เสร็จ</th></tr></thead><tbody>
+      ${open.sort((a,b) => (a.o.due_date||'9') < (b.o.due_date||'9') ? -1 : 1).map(({o,s}) => `<tr class="click" data-act="openOrder" data-id="${o.id}"><td class="mono">${esc(o.order_no)}</td><td>${esc(o.customer)}</td><td>${dueChip(o.due_date, false)}</td><td><div class="bar"><span style="width:${s.target ? s.done/s.target*100 : 0}%"></span></div></td><td class="r num">${s.done}/${s.target}</td></tr>`).join('')}
+      </tbody></table></div>` : `<div class="empty">ทุกออเดอร์ครบแล้ว</div>`}</section>
+  </div>
+  <section class="section"><div class="sec-head"><h3>ผลงานรายคน</h3><span class="muted">ประสิทธิภาพ = เวลามาตรฐาน ÷ เวลาจริง · มากกว่า 100% คือเร็วกว่ามาตรฐาน</span></div>
+    <div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>ตอนนี้</th><th class="r">ขั้นตอนที่เสร็จ</th><th class="r">ชิ้นงาน</th><th class="r">ชั่วโมงงาน</th><th class="r">ประสิทธิภาพ</th><th class="r">ถูกสั่งแก้</th><th>ล่าสุด</th></tr></thead><tbody>
+    ${S.data.workers.filter(w => w.active !== false && (perW[w.id] || activeNow[w.id] || w.role==='worker')).map(w => { const a = perW[w.id] || {n:0,m:0,sm:0,am:0,rw:0,pcs:new Set(),last:''}; const act = activeNow[w.id]; const eff = a.am ? a.sm/a.am*100 : null;
+      return `<tr><td><b>${esc(w.name)}</b> <span class="muted">${ROLE_NAME[w.role]}</span></td><td>${act ? `<span class="chip info">${esc(stepLabel(act.step))}</span>` : '<span class="muted">–</span>'}</td>
+        <td class="r num">${a.n}</td><td class="r num">${a.pcs.size}</td><td class="r num">${fmt(a.m/60,1)}</td>
+        <td class="r num ${eff == null ? '' : eff < 85 ? 'var-up' : eff > 110 ? 'var-dn' : ''}">${eff == null ? '–' : fmt(eff)+'%'}</td><td class="r num">${a.rw || '–'}</td><td>${a.last ? fDT(a.last) : '–'}</td></tr>` }).join('')}
+    </tbody></table></div></section>
+  <div class="dash-grid">
+    <section class="section"><h3>เวลาจริงเทียบมาตรฐาน ต่อขั้นตอน</h3>
+      <div class="table-wrap"><table><thead><tr><th>ขั้นตอน</th><th class="r">ครั้ง</th><th class="r">เฉลี่ยจริง</th><th class="r">มาตรฐาน</th><th class="r">ต่าง</th></tr></thead><tbody>
+      ${STEP_ORDER.filter(k => perS[k]).map(k => { const b = perS[k]; const avg = b.m/b.n, sa = b.sn ? b.sm/b.sn : 0;
+        return `<tr><td>${esc(stepLabel(k))}</td><td class="r num">${b.n}</td><td class="r num">${fMins(avg)}</td><td class="r num muted">${sa ? fMins(sa) : '–'}</td>${varCell(avg, sa)}</tr>` }).join('') || `<tr><td colspan="5" class="muted">ไม่มีงานที่เสร็จในช่วงนี้</td></tr>`}
+      </tbody></table></div></section>
+    <section class="section"><h3>วัสดุใช้จริงเทียบมาตรฐาน</h3>
+      <div class="table-wrap"><table><thead><tr><th>วัสดุ</th><th class="r">ใช้จริง</th><th class="r">มาตรฐาน</th><th class="r">ต่าง</th><th class="r">มูลค่าจริง</th></tr></thead><tbody>
+      ${Object.entries(perM).sort((a,b) => (b[1].act * num(M.material[b[0]]?.unit_cost)) - (a[1].act * num(M.material[a[0]]?.unit_cost))).map(([id, c]) => { const m = M.material[id];
+        return `<tr><td>${esc(m?.name)}</td><td class="r num">${fQty(c.act, m?.unit)}</td><td class="r num muted">${c.std ? fQty(c.std, m?.unit) : '–'}</td>${varCell(c.act, c.std)}<td class="r num">${baht(c.act * num(m?.unit_cost))}</td></tr>` }).join('') || `<tr><td colspan="5" class="muted">ไม่มีการใช้วัสดุในช่วงนี้</td></tr>`}
+      </tbody></table></div></section>
+  </div>
+  <section class="section"><div class="sec-head"><h3>ต้นทุนจริงต่อชิ้น (ชิ้นที่เสร็จในช่วงนี้)</h3><span class="muted">ค่าแรงคิดจากเวลาจริง × อัตราค่าแรง · รวมงานที่ถูกสั่งแก้</span></div>
+    ${costs.length ? `<div class="table-wrap"><table><thead><tr><th>ชิ้นงาน</th><th>สินค้า</th><th class="r">เวลารวม</th><th class="r">วัสดุ</th><th class="r">ค่าแรง</th><th class="r">รวม</th><th class="r">มาตรฐาน</th><th class="r">ต่าง</th></tr></thead><tbody>
+      ${costs.map(c => `<tr class="click" data-act="openPiece" data-id="${c.p.id}"><td class="mono">${esc(c.p.code)}</td><td>${esc(M.product[c.p.product_id]?.name)}</td><td class="r num">${fMins(c.m)}</td><td class="r num">${baht(c.mat)}</td><td class="r num">${baht(c.lab)}</td><td class="r num"><b>${baht(c.tot)}</b></td><td class="r num muted">${baht(c.std)}</td>${varCell(c.tot, c.std)}</tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">ยังไม่มีชิ้นงานที่เสร็จในช่วงนี้</div>`}</section>
+  <section class="section"><h3>ความเคลื่อนไหวล่าสุด</h3><div class="panel"><div class="feed">
+    ${feed.map(f => `<div class="feed-item" ${f.pid ? `data-act="openPiece" data-id="${f.pid}" style="cursor:pointer"` : ''}><span class="t">${fDT(f.t)}</span><span>${f.h}</span></div>`).join('')}
+  </div></div></section>`;
+}
+
+/* =====================================================================
+   VIEW: ตั้งค่า
+   ===================================================================== */
+function vSettings(){
+  const ro = !canEditMaster();
+  const tab = S.setTab;
+  let body = '';
+  if(tab==='workers'){
+    body = `<div class="sec-head"><h3>รายชื่อและสิทธิ์</h3><button class="btn btn-primary" data-act="editWorker" ${ro ? 'disabled' : ''}>+ เพิ่มคน</button></div>
+    <div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>บทบาท</th><th>เข้าถึงได้</th><th class="r">ค่าแรง/ชม.</th><th>สถานะ</th></tr></thead><tbody>
+    ${S.data.workers.slice().sort((a,b) => ROLE_RANK[b.role]-ROLE_RANK[a.role] || a.name.localeCompare(b.name,'th')).map(w => `<tr class="click" data-act="editWorker" data-id="${w.id}"><td><b>${esc(w.name)}</b></td><td>${ROLE_NAME[w.role]}</td>
+      <td class="muted">${{worker:'หน้างาน · ผลงานของตัวเอง', supervisor:'+ QC · ออเดอร์ · สต็อก', manager:'ทุกส่วน รวมผู้บริหารและตั้งค่า'}[w.role]}</td><td class="r num">${w.hourly_rate != null ? (num(w.hourly_rate) ? baht(w.hourly_rate) : 'ใช้ค่ากลาง') : '–'}</td><td>${w.active === false ? '<span class="chip">ปิดใช้</span>' : '<span class="chip good">ใช้งาน</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  } else if(tab==='materials'){
+    body = `<div class="sec-head"><h3>วัสดุและราคาต่อหน่วย</h3><button class="btn btn-primary" data-act="editMaterial" ${ro ? 'disabled' : ''}>+ เพิ่มวัสดุ</button></div>
+    <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>หมวด</th><th>หน่วย</th><th class="r">ราคา/หน่วย</th><th class="r">จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead><tbody>
+    ${S.data.materials.map(m => `<tr class="click" data-act="editMaterial" data-id="${m.id}"><td class="mono">${esc(m.code)}</td><td>${esc(m.name)}</td><td>${CAT_NAME[m.category]}</td><td>${UNIT_NAME[m.unit]}</td><td class="r num">${fmt(m.unit_cost,2)}</td><td class="r num">${fQty(m.reorder_level, m.unit)}</td><td>${m.active === false ? '<span class="chip">เลิกใช้</span>' : '<span class="chip good">ใช้งาน</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  } else if(tab==='products'){
+    body = `<div class="sec-head"><h3>สินค้าและสูตรมาตรฐาน</h3><button class="btn btn-primary" data-act="editProduct" ${ro ? 'disabled' : ''}>+ เพิ่มสินค้า</button></div>
+    <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>เส้นทางปกติ</th><th class="r">เวลามาตรฐาน</th><th class="r">ต้นทุนมาตรฐาน</th></tr></thead><tbody>
+    ${S.data.products.map(p => { const sc = stdCost(p.id, p.default_route); return `<tr class="click" data-act="editProduct" data-id="${p.id}"><td class="mono">${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category || '')}</td><td>${p.default_route} · ${ROUTE_NAME[p.default_route]}</td><td class="r num">${fMins(sc.mins)}</td><td class="r num">${baht(sc.mat + sc.labor)}</td></tr>` }).join('')}
+    </tbody></table></div>`;
+  } else {
+    body = `<div class="panel"><div class="grid2">
+      <div class="field"><label for="g-rate">ค่าแรงกลาง (บาท/ชั่วโมง)</label><input id="g-rate" class="input num" type="number" step="any" value="${defaultRate()}" ${ro ? 'disabled' : ''}><span class="muted" style="font-size:.85rem">ใช้กับคนที่ไม่ได้ตั้งค่าแรงรายคน และใช้คิดต้นทุนมาตรฐาน</span></div></div>
+      <div><button class="btn btn-primary" data-act="saveGeneral" ${ro ? 'disabled' : ''}>บันทึก</button></div></div>
+    <div class="panel"><h3>การเชื่อมต่อข้อมูล</h3>
+      ${S.mode==='demo' ? `<p style="margin:0">ตอนนี้เป็น <b>โหมดทดลอง</b> ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น เมื่อใส่ค่า Supabase ในไฟล์แอป ระบบจะเก็บข้อมูลจริงบนคลาวด์และใช้ร่วมกันทุกเครื่อง</p>` :
+        `<p style="margin:0">เชื่อมต่อ Supabase แล้ว · บัญชีเครื่องนี้: <b>${S.deviceRole==='manager' ? 'ผู้บริหาร' : 'แท็บเล็ตหน้างาน'}</b></p><div><button class="btn" data-act="signOut">ออกจากระบบเครื่องนี้</button></div>`}
+    </div>`;
+  }
+  return `<section class="section"><div class="sec-head"><h2>ตั้งค่า</h2>${seg('settab', [['workers','ช่างและสิทธิ์'],['materials','วัสดุ'],['products','สินค้าและสูตรมาตรฐาน'],['general','ทั่วไป']], tab, 'small', 'setTab')}</div>
+    ${ro ? `<div class="panel ink2">เครื่องนี้ล็อกอินด้วยบัญชีแท็บเล็ต ดูข้อมูลได้แต่แก้ไขข้อมูลหลักได้จากบัญชีผู้บริหารเท่านั้น</div>` : ''}
+    ${body}</section>`;
+}
+function shWorkerForm(id){
+  const w = id ? M.worker[id] : {name:'', role:'worker', hourly_rate:0, active:true};
+  return sheetHead(id ? 'แก้ไข '+esc(w.name) : 'เพิ่มคน', '') + `<div class="sheet-body"><div class="panel">
+    <div class="grid2"><div class="field"><label for="w-name">ชื่อที่แสดงบนแท็บเล็ต</label><input id="w-name" class="input" value="${esc(w.name)}"></div>
+      <div class="field"><label for="w-role">บทบาท</label><select id="w-role" class="input">${Object.keys(ROLE_NAME).map(r => `<option value="${r}" ${w.role===r ? 'selected' : ''}>${ROLE_NAME[r]}</option>`).join('')}</select></div>
+      <div class="field"><label for="w-rate">ค่าแรงต่อชั่วโมง (บาท) · 0 = ใช้ค่ากลาง</label><input id="w-rate" class="input num" type="number" step="any" value="${num(w.hourly_rate)}"></div>
+      <div class="field"><label for="w-pin">${id ? 'ตั้ง PIN ใหม่ (เว้นว่าง = ไม่เปลี่ยน)' : 'PIN 4–6 หลัก'}</label><input id="w-pin" class="input mono" inputmode="numeric" maxlength="6" autocomplete="off"></div></div>
+    <label class="row"><input type="checkbox" id="w-active" ${w.active !== false ? 'checked' : ''} style="width:22px;height:22px"> ใช้งานอยู่</label>
+    <div><button class="btn btn-primary btn-xl" data-act="saveWorker" data-id="${id || ''}">บันทึก</button></div></div></div>`;
+}
+function shMaterialForm(id){
+  const m = id ? M.material[id] : {code:'', name:'', category:'fiber', unit:'m', unit_cost:0, reorder_level:0, active:true};
+  return sheetHead(id ? 'แก้ไขวัสดุ' : 'เพิ่มวัสดุ', '') + `<div class="sheet-body"><div class="panel"><div class="grid2">
+    <div class="field"><label for="m-code">รหัส</label><input id="m-code" class="input mono" value="${esc(m.code)}"></div>
+    <div class="field"><label for="m-name">ชื่อ</label><input id="m-name" class="input" value="${esc(m.name)}" placeholder="เช่น ใยแก้วตาสาน เบอร์ 800"></div>
+    <div class="field"><label for="m-cat">หมวด</label><select id="m-cat" class="input">${Object.entries(CAT_NAME).map(([k,v]) => `<option value="${k}" ${m.category===k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div class="field"><label for="m-unit">หน่วยหลัก</label><select id="m-unit" class="input">${Object.entries({kg:'กิโลกรัม (ป้อนเป็นกรัมได้)', m:'เมตร', pcs:'ชิ้น'}).map(([k,v]) => `<option value="${k}" ${m.unit===k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div class="field"><label for="m-cost">ราคาต่อหน่วยหลัก (บาท)</label><input id="m-cost" class="input num" type="number" step="any" value="${num(m.unit_cost)}"></div>
+    <div class="field"><label for="m-reorder">จุดสั่งซื้อ (หน่วยหลัก)</label><input id="m-reorder" class="input num" type="number" step="any" value="${num(m.reorder_level)}"></div></div>
+    <label class="row"><input type="checkbox" id="m-active" ${m.active !== false ? 'checked' : ''} style="width:22px;height:22px"> ใช้งานอยู่</label>
+    <div><button class="btn btn-primary btn-xl" data-act="saveMaterial" data-id="${id || ''}">บันทึก</button></div></div></div>`;
+}
+function shProductForm(id){
+  const p = id ? M.product[id] : {code:'', name:'', category:'ชิ้นส่วนรถยนต์', default_route:'A', standard:{}};
+  const sd = p.standard || {};
+  return sheetHead(id ? 'แก้ไข '+esc(p.name) : 'เพิ่มสินค้า', 'สูตรมาตรฐานใช้เติมค่าล่วงหน้าบนหน้างาน และใช้เทียบเวลา วัสดุ และต้นทุนจริง') + `<div class="sheet-body">
+    <div class="panel"><div class="grid2">
+      <div class="field"><label for="p-code">รหัสสินค้า</label><input id="p-code" class="input mono" value="${esc(p.code)}"></div>
+      <div class="field"><label for="p-name">ชื่อสินค้า</label><input id="p-name" class="input" value="${esc(p.name)}"></div>
+      <div class="field"><label for="p-cat">ประเภท</label><input id="p-cat" class="input" value="${esc(p.category || '')}" placeholder="เรือ / ชิ้นส่วนรถยนต์"></div>
+      <div class="field"><label for="p-route">เส้นทางงานผิวปกติ</label><select id="p-route" class="input"><option value="A" ${p.default_route==='A' ? 'selected' : ''}>A · เก็บผิว</option><option value="B" ${p.default_route==='B' ? 'selected' : ''}>B · พ่นเรซินเจลโค้ตเพิ่ม</option></select></div></div></div>
+    ${STEP_ORDER.map(k => { const st = STEPS[k], x = sd[k] || {};
+      return `<div class="panel"><h3><span class="stepno">${st.no}</span>${st.name}${st.route ? ` <span class="muted" style="font:400 .85rem var(--f-body)">เฉพาะเส้นทาง ${st.route}</span>` : ''}</h3>
+        <div class="grid2"><div class="field"><label for="std-min-${k}">เวลามาตรฐาน (นาที)</label><input id="std-min-${k}" class="input num" type="number" step="any" value="${x.minutes ?? ''}"></div>
+        ${st.passes ? `<div class="field"><label for="std-pass-${k}">จำนวนเที่ยว</label><input id="std-pass-${k}" class="input num" type="number" min="1" max="3" value="${x.passes ?? st.defPass}"></div>` : ''}</div>
+        <div class="field"><span class="flabel">${st.layers ? 'ใยแก้วแต่ละชั้น (เมตร)' : 'วัสดุมาตรฐาน'}</span>${matEditor(k, x.materials || [], 'std')}</div></div>` }).join('')}
+    <div><button class="btn btn-primary btn-xl" data-act="saveProduct" data-id="${id || ''}">บันทึกสินค้า</button></div></div>`;
+}
+
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+async function guarded(fn){ try { await fn() } catch(e){ console.error(e); toast('บันทึกไม่สำเร็จ: ' + errMsg(e), 'bad') } }
+const ACT = {
+  async tab(d){
+    const t = TABS.find(x => x.id===d.v);
+    if(t.min > rank()){
+      const w = await askWorker({title:'ปลดล็อก '+t.label, minRank:t.min, sub:`ต้องเป็น${t.min===3 ? 'ผู้บริหาร' : 'หัวหน้า/QC หรือผู้บริหาร'}`});
+      if(!w) return; startSession(w);
+    }
+    S.view = t.id; S.confirmKey = null; render(); window.scrollTo(0,0);
+  },
+  lock(){ lock(); toast('ล็อกแล้ว') },
+  async reload(){ await guarded(async () => { await loadAll(); render(); toast('โหลดข้อมูลล่าสุดแล้ว') }) },
+  resetDemo(){
+    if(S.confirmKey!=='reset'){ S.confirmKey = 'reset'; renderBanner(); return }
+    S.confirmKey = null;
+    guarded(async () => { try { localStorage.removeItem(DEMO_KEY) } catch(e){} S.session = null; S.view = 'floor'; closeSheet(); await loadAll(); render(); toast('สร้างข้อมูลตัวอย่างใหม่แล้ว') });
+  },
+  pickStep(d){
+    S.stationStep = d.v; lsSet('stationStep', d.v); render();
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto';
+    document.querySelector(`.stepbtn[data-v="${d.v}"]`)?.scrollIntoView({block:'nearest', inline:'center', behavior:smooth});
+    const q = document.getElementById('queue');
+    if(q && q.getBoundingClientRect().top > innerHeight * 0.55) q.scrollIntoView({block:'start', behavior:smooth});
+  },
+  async floorNewOrder(){
+    if(rank() < 2){ const w = await askWorker({title:'รับออเดอร์ใหม่', minRank:2, sub:'หัวหน้าหรือผู้บริหารเป็นผู้รับออเดอร์'}); if(!w) return; startSession(w); renderTabs(); renderTop() }
+    openSheet(shOrderForm);
+  },
+  openPiece(d){ openSheet(shPiece, d.id) },
+  closeSheet(){ closeSheet(); render() },
+  async myWork(){ const w = await askWorker({title:'ดูผลงานของฉัน'}); if(w) openSheet(shMyWork, w.id) },
+  async startStep(d){
+    await guarded(async () => {
+      const w = await askWorker({title:'ใครเริ่มงานนี้'}); if(!w) return;
+      await refreshPiece(d.id);
+      const s = M.state[d.id];
+      if(s.status!=='waiting'){ toast('ชิ้นงานนี้มีคนเริ่มไปแล้ว', 'bad'); refreshSheet(); return }
+      await dbInsert('step_logs', {id:uid(), piece_id:d.id, step:s.step, worker_id:w.id, finished_by:null, started_at:nowISO(), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:nowISO()});
+      reindex(); render(); toast(`${w.name} เริ่ม ${stepLabel(s.step)}`);
+    });
+  },
+  async finishStep(d){
+    await guarded(async () => {
+      const l = S.data.step_logs.find(x => x.id===d.id); if(!l) return;
+      const ed = document.querySelector('.mat-editor[data-key="log"]');
+      const mats = ed ? readMatRows(ed) : [];
+      const st = STEPS[l.step];
+      if(st.cats.some(c => c!=='other') && !mats.length){ toast('กรอกปริมาณวัสดุที่ใช้ก่อนบันทึก', 'bad'); return }
+      const passes = st.passes ? parseInt(readSeg('passes')) || null : null;
+      const note = $('#logNote')?.value.trim() || null;
+      const w = await askWorker({title:'ยืนยันผู้ทำงานเสร็จ', preselect:l.worker_id}); if(!w) return;
+      const photo = await uploadPhoto($('#logPhoto'));
+      await dbUpdate('step_logs', l.id, {status:'done', finished_at:nowISO(), finished_by:w.id, passes, materials:mats, note, photo_url:photo});
+      reindex(); render(); toast(`บันทึก ${stepLabel(l.step)} เสร็จ · ${fMins(logMins(S.data.step_logs.find(x => x.id===l.id)))}`);
+    });
+  },
+  async cancelStep(d){
+    await guarded(async () => {
+      const l = S.data.step_logs.find(x => x.id===d.id); if(!l) return;
+      const w = await askWorker({title:'ยกเลิกการเริ่มงาน', preselect:l.worker_id, sub:'ผู้ที่กดเริ่ม หรือหัวหน้า ยกเลิกได้'}); if(!w) return;
+      if(w.id!==l.worker_id && ROLE_RANK[w.role] < 2){ toast('ยกเลิกได้เฉพาะผู้ที่กดเริ่มหรือหัวหน้า', 'bad'); return }
+      await dbUpdate('step_logs', l.id, {status:'cancelled', finished_at:nowISO(), finished_by:w.id});
+      reindex(); render(); toast('ยกเลิกแล้ว ชิ้นงานกลับไปรอที่ขั้นตอนเดิม');
+    });
+  },
+  seg(d, el){
+    const g = el.closest('.seg'); g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b===el)));
+    if(g.dataset.on && ON[g.dataset.on]) ON[g.dataset.on](d.v);
+  },
+  addMatRow(d, el){
+    const sel = `.mat-editor[data-step="${d.step}"]` + (d.key ? `[data-key="${d.key}"]` : '');
+    const ed = el.closest('.field')?.querySelector(sel) || document.querySelector(sel);
+    ed.insertAdjacentHTML('beforeend', matRow({}, d.step, ed.classList.contains('layers')));
+  },
+  addItemRow(){ $('#o-items').insertAdjacentHTML('beforeend', itemRow()) },
+  delRow(d, el){ el.closest('.mrow, .irow').remove() },
+  async openQC(d){
+    if(rank() < 2){ const w = await askWorker({title:'บันทึก QC', minRank:2}); if(!w) return; startSession(w); renderTabs(); renderTop() }
+    openSheet(shQC, d.id, d.point);
+  },
+  async saveQC(d){
+    await guarded(async () => {
+      const p = M.piece[d.id], s = M.state[d.id];
+      const point = $('#qc-point').value, result = readSeg('qcres') || 'pass';
+      const defect = result==='pass' ? null : readSeg('defect');
+      if(result!=='pass' && !defect){ toast('เลือกตำหนิที่พบก่อน', 'bad'); return }
+      let insp = S.session?.worker;
+      if(!insp || ROLE_RANK[insp.role] < 2){ insp = await askWorker({title:'ผู้ตรวจ QC', minRank:2}); if(!insp) return }
+      const photo = await uploadPhoto($('#qc-photo'));
+      const rework_step = result==='rework' ? $('#qc-rework').value : null;
+      await dbInsert('qc_records', {id:uid(), piece_id:p.id, step:point, inspector_id:insp.id, result, defect, rework_step, note:$('#qc-note').value.trim() || null, photo_url:photo, created_at:nowISO()});
+      if(result==='rework'){
+        const from = s.route.indexOf(rework_step);
+        for(const l of s.logs.filter(l => l.status==='done' && s.route.indexOf(l.step) >= from)) await dbUpdate('step_logs', l.id, {status:'reworked'});
+      }
+      if(result==='scrap'){
+        await dbUpdate('pieces', p.id, {scrapped:true, scrap_reason:defect});
+        if($('#qc-replace')?.checked){
+          const n = S.data.pieces.filter(x => x.order_id===p.order_id).length;
+          const np = {id:uid(), code: p.code.replace(/-R\d+$/,'') + '-R' + (S.data.pieces.filter(x => x.code.startsWith(p.code.replace(/-R\d+$/,'') + '-R')).length + 1), order_id:p.order_id, order_item_id:p.order_item_id, product_id:p.product_id, route:p.route, seq:n+1, scrapped:false, scrap_reason:null, replaces:p.id, created_at:nowISO()};
+          await dbInsert('pieces', np);
+          toast('สร้างชิ้นทดแทน ' + np.code);
+        }
+      }
+      reindex(); closeSheet(); render();
+      if(result!=='scrap') toast(result==='pass' ? 'บันทึก QC ผ่าน' : 'ส่งแก้ที่ ' + stepLabel(rework_step));
+    });
+  },
+  newOrder(){ openSheet(shOrderForm) },
+  async saveOrder(){
+    await guarded(async () => {
+      const order_no = $('#o-no').value.trim();
+      if(!order_no){ toast('ใส่เลขที่ออเดอร์', 'bad'); return }
+      if(S.data.orders.some(o => o.order_no===order_no)){ toast('เลขที่ออเดอร์นี้มีอยู่แล้ว', 'bad'); return }
+      const items = [...document.querySelectorAll('#o-items .irow')].map(r => ({product_id:r.querySelector('.i-prod').value, qty:parseInt(r.querySelector('.i-qty').value), route:r.querySelector('.i-route').value})).filter(i => i.product_id && i.qty > 0);
+      if(!items.length){ toast('เพิ่มรายการสินค้าอย่างน้อย 1 รายการ', 'bad'); return }
+      const now = nowISO();
+      const o = {id:uid(), order_no, customer:$('#o-cust').value.trim() || null, received_date:$('#o-recv').value || localDate(), due_date:$('#o-due').value || null, note:$('#o-note').value.trim() || null, created_by:S.session?.worker.id || null, created_at:now};
+      const its = [], ps = []; let seq = 0;
+      for(const it of items){
+        const oi = {id:uid(), order_id:o.id, product_id:it.product_id, qty:it.qty, route:it.route, created_at:now}; its.push(oi);
+        for(let k = 0; k < it.qty; k++){ seq++; ps.push({id:uid(), code:`${order_no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:it.product_id, route:it.route, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:now}) }
+      }
+      await dbInsert('orders', o); await dbInsert('order_items', its); await dbInsert('pieces', ps);
+      reindex(); render(); openSheet(shOrder, o.id); toast(`บันทึกออเดอร์ ${order_no} · ${ps.length} ชิ้น`);
+    });
+  },
+  openOrder(d){ openSheet(shOrder, d.id) },
+  openLabels(d){ openSheet(shLabels, d.id) },
+  print(){ window.print() },
+  stockForm(d){ openSheet(shStockForm, d.id) },
+  async saveStock(){
+    await guarded(async () => {
+      const mid = $('#st-mat').value, m = M.material[mid]; let q = parseFloat($('#st-qty').value);
+      const kind = readSeg('stkind') || 'receive';
+      if(!m || !q || (kind==='receive' && q < 0)){ toast('ใส่จำนวนให้ถูกต้อง', 'bad'); return }
+      if($('#st-unit').value==='g') q = q/1000;
+      const cost = parseFloat($('#st-cost').value);
+      await dbInsert('stock_receipts', {id:uid(), material_id:mid, qty:+q.toFixed(4), unit_cost:isFinite(cost) ? cost : null, kind, note:$('#st-note').value.trim() || null, worker_id:S.session?.worker.id || null, created_at:nowISO()});
+      reindex(); closeSheet(); render(); toast(`${kind==='receive' ? 'รับเข้า' : 'ปรับยอด'} ${m.name} ${fQty(Math.abs(q), m.unit)}`);
+    });
+  },
+  editWorker(d){ if(canEditMaster()) openSheet(shWorkerForm, d.id) },
+  async saveWorker(d){
+    await guarded(async () => {
+      const name = $('#w-name').value.trim(), pin = $('#w-pin').value.trim();
+      if(!name){ toast('ใส่ชื่อ', 'bad'); return }
+      if(pin && !/^[0-9]{4,6}$/.test(pin)){ toast('PIN ต้องเป็นตัวเลข 4–6 หลัก', 'bad'); return }
+      const patch = {name, role:$('#w-role').value, hourly_rate:num($('#w-rate').value), active:$('#w-active').checked};
+      let id = d.id;
+      if(id) await dbUpdate('workers', id, patch);
+      else { if(!pin){ toast('ตั้ง PIN ให้คนใหม่ด้วย', 'bad'); return } id = uid(); await dbInsert('workers', {id, ...patch, color:null, pin_hash:null, created_at:nowISO()}) }
+      if(pin) await setPin(id, pin);
+      reindex(); closeSheet(); render(); toast('บันทึกแล้ว');
+    });
+  },
+  editMaterial(d){ if(canEditMaster()) openSheet(shMaterialForm, d.id) },
+  async saveMaterial(d){
+    await guarded(async () => {
+      const row = {code:$('#m-code').value.trim(), name:$('#m-name').value.trim(), category:$('#m-cat').value, unit:$('#m-unit').value, unit_cost:num($('#m-cost').value), reorder_level:num($('#m-reorder').value), active:$('#m-active').checked};
+      if(!row.code || !row.name){ toast('ใส่รหัสและชื่อวัสดุ', 'bad'); return }
+      if(S.data.materials.some(m => m.code===row.code && m.id!==d.id)){ toast('รหัสนี้มีอยู่แล้ว', 'bad'); return }
+      if(d.id) await dbUpdate('materials', d.id, row); else await dbInsert('materials', {id:uid(), ...row, created_at:nowISO()});
+      reindex(); closeSheet(); render(); toast('บันทึกวัสดุแล้ว');
+    });
+  },
+  editProduct(d){ if(canEditMaster()) openSheet(shProductForm, d.id) },
+  async saveProduct(d){
+    await guarded(async () => {
+      const row = {code:$('#p-code').value.trim(), name:$('#p-name').value.trim(), category:$('#p-cat').value.trim() || null, default_route:$('#p-route').value};
+      if(!row.code || !row.name){ toast('ใส่รหัสและชื่อสินค้า', 'bad'); return }
+      if(S.data.products.some(p => p.code===row.code && p.id!==d.id)){ toast('รหัสสินค้านี้มีอยู่แล้ว', 'bad'); return }
+      const standard = {};
+      for(const k of STEP_ORDER){
+        const m = parseFloat($('#std-min-'+k).value), ps = $('#std-pass-'+k), mats = readMatRows(document.querySelector(`.mat-editor[data-step="${k}"][data-key="std"]`));
+        if(!(m > 0) && !mats.length) continue;
+        standard[k] = {minutes: m > 0 ? m : 0, materials:mats}; if(ps) standard[k].passes = parseInt(ps.value) || STEPS[k].defPass;
+      }
+      row.standard = standard;
+      if(d.id) await dbUpdate('products', d.id, row); else await dbInsert('products', {id:uid(), ...row, active:true, created_at:nowISO()});
+      reindex(); closeSheet(); render(); toast('บันทึกสินค้าและสูตรมาตรฐานแล้ว');
+    });
+  },
+  async saveGeneral(){ await guarded(async () => { const r = num($('#g-rate').value); if(!(r > 0)){ toast('ใส่ค่าแรงให้ถูกต้อง', 'bad'); return } await saveSetting('default_labor_rate', r); reindex(); render(); toast('บันทึกแล้ว') }) },
+  async signOut(){ await S.sb.auth.signOut(); location.reload() },
+  exportCSV(){
+    const head = ['เริ่ม','เสร็จ','ชิ้นงาน','ออเดอร์','ลูกค้า','สินค้า','ขั้นตอน','ผู้ทำ','นาที','เที่ยว','วัสดุ','สถานะ','หมายเหตุ'];
+    const rows = S.data.step_logs.slice().sort((a,b) => a.started_at < b.started_at ? -1 : 1).map(l => { const p = M.piece[l.piece_id], o = p && M.order[p.order_id];
+      return [l.started_at, l.finished_at || '', p?.code, o?.order_no, o?.customer, M.product[p?.product_id]?.name, stepLabel(l.step), wName(l.finished_by || l.worker_id), l.finished_at ? Math.round(logMins(l)) : '', l.passes || '', matsText(l.materials), l.status, l.note || ''] });
+    const csv = '﻿' + [head, ...rows].map(r => r.map(v => '"' + String(v ?? '').replace(/"/g,'""') + '"').join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'infusion-log-' + localDate() + '.csv'; a.click();
+  }
+};
+const ON = {
+  qcResChange(v){ $('#qc-more').hidden = v==='pass'; $('#qc-rework-f').hidden = v!=='rework'; $('#qc-replace-f').hidden = v!=='scrap' },
+  orderFilter(v){ S.orderFilter = v; render() },
+  dashRange(v){ S.dashRange = parseInt(v); render() },
+  setTab(v){ S.setTab = v; render() }
+};
+
+document.addEventListener('click', e => {
+  if(e.target.closest('#modal')) return;
+  if(S.session) S.session.until = Date.now() + SESSION_MIN*60000;
+  const a = e.target.closest('[data-act]'); if(!a) return;
+  const fn = ACT[a.dataset.act]; if(!fn) return;
+  if(a.tagName==='BUTTON' || a.tagName==='A') e.preventDefault();
+  if(a.dataset.act!=='resetDemo' && S.confirmKey){ S.confirmKey = null; renderBanner() }
+  fn({...a.dataset}, a);
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.matches('.m-mat')){ const m = M.material[t.value]; const u = t.closest('.mrow, .panel')?.querySelector('.m-unit'); if(u) u.innerHTML = unitOptions(m, m?.unit); if(t.id==='st-mat' && m) $('#st-cost').value = num(m.unit_cost) }
+  if(t.matches('.i-prod')){ const p = M.product[t.value]; const r = t.closest('.irow').querySelector('.i-route'); if(p) r.value = p.default_route }
+});
+document.addEventListener('submit', e => {
+  const f = e.target; if(f.dataset.form!=='scan') return; e.preventDefault();
+  const code = $('#scan').value.trim().toUpperCase(); if(!code) return;
+  const p = S.data.pieces.find(x => x.code.toUpperCase()===code);
+  if(p){ $('#scan').value = ''; openSheet(shPiece, p.id) } else toast('ไม่พบรหัสชิ้นงาน ' + code, 'bad');
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape' && S.sheet && $('#modal').hidden){ closeSheet(); render() } });
+setInterval(() => {
+  document.querySelectorAll('[data-since]').forEach(el => el.textContent = fMins(mins(el.dataset.since, nowISO())));
+  if(S.session && Date.now() > S.session.until){ lock(); toast('ล็อกอัตโนมัติเพราะไม่มีการใช้งาน') }
+}, 30000);
+setInterval(async () => {
+  if(S.mode!=='supabase' || S.sheet || !$('#modal').hidden || !S.sb) return;
+  try { await loadAll(); render() } catch(e){}
+}, 60000);
+
+/* =====================================================================
+   DEMO DATA  (สุ่มแบบคงที่ เพื่อให้เห็นงานในทุกสถานะ)
+   ===================================================================== */
+async function seedDemo(){
+  let seed = 20261102; const R = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 };
+  const rnd = (a,b) => a + (b-a)*R(), pick = a => a[Math.floor(R()*a.length)];
+  const NOW = Date.now(), H = 3600000, DAY = 86400000, iso = t => new Date(t).toISOString();
+  const D = Object.fromEntries(TABLES.map(t => [t, []]));
+  const W = (name, role, rate) => { const w = {id:uid(), name, role, hourly_rate:rate, active:true, color:null, pin_hash:null, created_at:iso(NOW-60*DAY)}; D.workers.push(w); return w };
+  const wGel = W('สมชาย','worker',65), wLay = W('สมศักดิ์','worker',65), wInf = W('วิชัย','worker',70), wGr = W('บุญมา','worker',60), wPo = W('มานพ','worker',60), wPo2 = W('สุดา','worker',60), wSup = W('ประเสริฐ','supervisor',90); W('ผู้บริหาร','manager',0);
+  for(const w of D.workers) w.pin_hash = await sha256hex(w.id+':1234');
+  const MAT = {};
+  const mt = (code, name, category, unit, cost, reorder) => { const m = {id:uid(), code, name, category, unit, unit_cost:cost, reorder_level:reorder, active:true, created_at:iso(NOW-60*DAY)}; D.materials.push(m); MAT[code] = m.id };
+  mt('GC-W','เจลโค้ต สีขาว','gelcoat','kg',185,15); mt('GC-BK','เจลโค้ต สีดำ','gelcoat','kg',195,10);
+  mt('FB-SV','ใยผิว','fiber','m',28,40); mt('FB-300','ใยแก้ว เบอร์ 300','fiber','m',36,40); mt('FB-400','ใยแก้ว เบอร์ 400','fiber','m',45,60);
+  mt('FB-W600','ใยแก้วตาสาน เบอร์ 600','fiber','m',72,40); mt('FB-W800','ใยแก้วตาสาน เบอร์ 800','fiber','m',92,40); mt('FB-W1000','ใยแก้วตาสาน เบอร์ 1000','fiber','m',115,20);
+  mt('RS-INF','เรซินอินฟิวชั่น','resin','kg',125,60); mt('RS-GC','เรซินเจลโค้ต','resin','kg',150,10);
+  mt('CAT-MEKP','ตัวเร่ง (MEKP)','other','kg',260,1); mt('PL-C','ยาขัด หยาบ','polish','kg',480,0.5); mt('PL-F','ยาขัด ละเอียด (ลบขนแมว)','polish','kg',650,0.5);
+  D.settings.push({key:'default_labor_rate', value:60});
+  const L = (code, qty, layer) => ({material_id:MAT[code], qty, ...(layer ? {layer} : {})});
+  const PR = (code, name, category, route, standard) => { const p = {id:uid(), code, name, category, default_route:route, standard, active:true, created_at:iso(NOW-60*DAY)}; D.products.push(p); return p };
+  const pHood = PR('P-HOOD','ฝากระโปรงหน้า','ชิ้นส่วนรถยนต์','B', {
+    S1:{minutes:35, passes:2, materials:[L('GC-W',1.4), L('CAT-MEKP',0.03)]},
+    S2:{minutes:80, materials:[L('FB-SV',3,1), L('FB-400',3,2), L('FB-W600',3,3), L('FB-400',3,4)]},
+    S3:{minutes:60, materials:[L('RS-INF',6.5), L('CAT-MEKP',0.1)]},
+    S4:{minutes:45}, S5:{minutes:60}, S5_1:{minutes:30, passes:2, materials:[L('RS-GC',0.8)]}, S5_2:{minutes:70},
+    S6:{minutes:60, materials:[L('PL-C',0.08), L('PL-F',0.05)]}, S7:{minutes:20}});
+  const pSkirt = PR('P-SKIRT','สเกิร์ตข้าง','ชิ้นส่วนรถยนต์','A', {
+    S1:{minutes:25, passes:2, materials:[L('GC-BK',0.8), L('CAT-MEKP',0.02)]},
+    S2:{minutes:45, materials:[L('FB-SV',1.6,1), L('FB-300',1.6,2), L('FB-W600',1.6,3)]},
+    S3:{minutes:40, materials:[L('RS-INF',3.2), L('CAT-MEKP',0.05)]},
+    S4:{minutes:35}, S5:{minutes:50}, S6:{minutes:40, materials:[L('PL-C',0.05), L('PL-F',0.03)]}, S7:{minutes:15}});
+  const pBoat = PR('P-BOAT12','ตัวเรือ 12 ฟุต','เรือ','B', {
+    S1:{minutes:120, passes:2, materials:[L('GC-W',9), L('CAT-MEKP',0.18)]},
+    S2:{minutes:300, materials:[L('FB-SV',12,1), L('FB-400',12,2), L('FB-W800',12,3), L('FB-W800',12,4), L('FB-400',12,5)]},
+    S3:{minutes:180, materials:[L('RS-INF',45), L('CAT-MEKP',0.7)]},
+    S4:{minutes:150}, S5_1:{minutes:90, passes:2, materials:[L('RS-GC',4)]}, S5_2:{minutes:200},
+    S6:{minutes:180, materials:[L('PL-C',0.4), L('PL-F',0.25)]}, S7:{minutes:60}});
+
+  const SW = {S1:[wGel], S2:[wLay], S3:[wInf], S4:[wGr], S5:[wGr,wPo2], S5_1:[wGel], S5_2:[wGr,wPo2], S6:[wPo,wPo2], S7:[wPo2,wPo]};
+  const busy = {};
+  const work = t => { const d = new Date(t); if(d.getDay()===0){ d.setDate(d.getDate()+1); d.setHours(8, Math.floor(rnd(0,40)), 0, 0) }
+    const h = d.getHours() + d.getMinutes()/60;
+    if(h < 8) d.setHours(8, Math.floor(rnd(0,40)), 0, 0);
+    else if(h >= 16.5){ d.setDate(d.getDate()+1); if(d.getDay()===0) d.setDate(d.getDate()+1); d.setHours(8, Math.floor(rnd(0,40)), 0, 0) }
+    return d.getTime() };
+  const qc = (p, step, t, result, extra={}) => D.qc_records.push({id:uid(), piece_id:p.id, step, inspector_id:wSup.id, result, defect:null, rework_step:null, note:null, photo_url:null, created_at:iso(t), ...extra});
+  function sim(p, pr, startT, opt={}){
+    const route = ROUTES[p.route]; let i = 0, t = startT, reworked = false;
+    while(i < route.length){
+      const step = route[i], sd = pr.standard[step] || {minutes:30};
+      t = work(t); if(t > NOW) return;
+      const dur = num(sd.minutes) * rnd(0.82, 1.42) * 60000, w = pick(SW[step]);
+      if(t + dur > NOW){
+        if(!busy[w.id] && NOW - t < 5*H){ busy[w.id] = 1; D.step_logs.push({id:uid(), piece_id:p.id, step, worker_id:w.id, finished_by:null, started_at:iso(t), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:iso(t)}) }
+        return;
+      }
+      const mats = (sd.materials||[]).map(m => ({material_id:m.material_id, qty:+(m.qty * rnd(0.93, 1.24)).toFixed(3), ...(m.layer ? {layer:m.layer} : {})}));
+      D.step_logs.push({id:uid(), piece_id:p.id, step, worker_id:w.id, finished_by:w.id, started_at:iso(t), finished_at:iso(t+dur), passes:sd.passes || null, materials:mats, note:null, photo_url:null, status:'done', created_at:iso(t)});
+      t += dur;
+      if(step==='S3'){ const q = work(t + rnd(1,3)*H); if(q < NOW){
+        if(opt.scrap){ qc(p, 'S3', q, 'scrap', {defect:'ใยแห้ง (dry spot)', note:'ใยแห้งเป็นวงกว้างบริเวณขอบ ซ่อมไม่ได้'}); p.scrapped = true; p.scrap_reason = 'ใยแห้ง (dry spot)'; return {scrapAt:q} }
+        qc(p, 'S3', q, 'pass') } }
+      if(step==='S7'){ const q = work(t + rnd(0.3,2)*H); if(q < NOW){
+        if(opt.rework && !reworked){ reworked = true; qc(p, 'S7', q, 'rework', {defect:'รอยขัด/ขนแมว', rework_step:'S6', note:'ยังเห็นรอยขนแมวเมื่อส่องไฟด้านข้าง'});
+          for(const l of D.step_logs) if(l.piece_id===p.id && (l.step==='S6' || l.step==='S7') && l.status==='done') l.status = 'reworked';
+          i = route.indexOf('S6'); t = q + rnd(0.5,2)*H; continue }
+        qc(p, 'S7', q, 'pass') } return }
+      t += (step==='S3' ? rnd(10,18) : step==='S1' ? rnd(1,2.5) : rnd(1.5,22)) * H;
+      i++;
+    }
+  }
+  const dayStart = (daysAgo, h=8) => { const d = new Date(NOW - daysAgo*DAY); d.setHours(h, 0, 0, 0); return d.getTime() };
+  const mkOrder = (daysAgo, dueIn, customer, items, note=null) => {
+    const rd = new Date(dayStart(daysAgo)), pre = 'IF' + String(rd.getFullYear()).slice(2) + pad(rd.getMonth()+1) + '-';
+    const no = pre + String(D.orders.filter(o => o.order_no.startsWith(pre)).length + 1).padStart(3,'0');
+    const o = {id:uid(), order_no:no, customer, received_date:localDate(rd), due_date:localDate(new Date(NOW + dueIn*DAY)), note, created_by:wSup.id, created_at:iso(Math.min(dayStart(daysAgo, 9), NOW - 40*60000))};
+    D.orders.push(o); let seq = 0; const pcs = [];
+    for(const [pr, qty, route] of items){
+      const oi = {id:uid(), order_id:o.id, product_id:pr.id, qty, route, created_at:o.created_at}; D.order_items.push(oi);
+      for(let k = 0; k < qty; k++){ seq++; const p = {id:uid(), code:`${no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:pr.id, route, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:o.created_at}; D.pieces.push(p); pcs.push([p, pr]) }
+    }
+    return pcs;
+  };
+  const o1 = mkOrder(13, -1, 'อู่เรือบางปะกง (ตัวอย่าง)', [[pBoat, 2, 'B']], 'ลูกค้าขอเจลโค้ตสีขาวเงา');
+  const o2 = mkOrder(9, 4, 'ออโต้พาร์ท จำกัด (ตัวอย่าง)', [[pHood, 4, 'B']]);
+  const o3 = mkOrder(6, 7, 'ร้านแต่งรถ ปทุมธานี (ตัวอย่าง)', [[pSkirt, 6, 'A']]);
+  const o4 = mkOrder(1, 12, 'ลูกค้าหน้าร้าน (ตัวอย่าง)', [[pHood, 2, 'A']]);
+  o1.forEach(([p, pr], i) => sim(p, pr, dayStart(12, 8) + i*1.2*DAY));
+  o2.forEach(([p, pr], i) => { const r = sim(p, pr, dayStart(8, 8) + i*0.4*DAY, {scrap: i===2});
+    if(r && r.scrapAt){ const np = {...p, id:uid(), code:p.code+'-R1', scrapped:false, scrap_reason:null, replaces:p.id, seq:5, created_at:iso(r.scrapAt)}; D.pieces.push(np); sim(np, pr, r.scrapAt + 0.6*DAY) } });
+  o3.forEach(([p, pr], i) => sim(p, pr, dayStart(5, 8) + i*0.3*DAY, {rework: i===0}));
+  o4.forEach(([p, pr], i) => sim(p, pr, dayStart(0, 9) + i*0.15*DAY));
+  mkOrder(0, 14, 'อู่ซ่อมสีรถ (ตัวอย่าง)', [[pSkirt, 3, 'A']], 'ออเดอร์ใหม่วันนี้ ยังไม่เริ่มงาน');
+  // ให้มีตัวอย่างงานที่ "กำลังทำ" เสมอ ไม่ว่าจะเปิดดูเวลาไหน
+  const logsOf = id => D.step_logs.filter(l => l.piece_id===id);
+  const nextStep = p => { const done = new Set(logsOf(p.id).filter(l => l.status==='done').map(l => l.step)); return ROUTES[p.route].find(s => !done.has(s)) };
+  const candidates = D.pieces.filter(p => !p.scrapped && !logsOf(p.id).some(l => l.status==='in_progress') && nextStep(p) && nextStep(p)!=='S1');
+  for(const p of candidates){
+    if(D.step_logs.filter(l => l.status==='in_progress').length >= 3) break;
+    const step = nextStep(p), w = SW[step].find(x => !busy[x.id]); if(!w) continue;
+    busy[w.id] = 1; const t = NOW - rnd(15, 55)*60000;
+    D.step_logs.push({id:uid(), piece_id:p.id, step, worker_id:w.id, finished_by:null, started_at:iso(t), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:iso(t)});
+  }
+  const rc = (code, qty, daysAgo, note) => D.stock_receipts.push({id:uid(), material_id:MAT[code], qty, unit_cost:D.materials.find(m => m.id===MAT[code]).unit_cost, kind:'receive', note, worker_id:wSup.id, created_at:iso(dayStart(daysAgo, 10))});
+  [['GC-W',50],['GC-BK',20],['FB-SV',150],['FB-300',80],['FB-400',260],['FB-W600',120],['FB-W800',90],['FB-W1000',40],['RS-INF',200],['RS-GC',30],['CAT-MEKP',4],['PL-C',2],['PL-F',1.5]].forEach(([c,q]) => rc(c, q, 18, 'ยอดยกมา'));
+  rc('RS-INF', 100, 4, 'ใบส่งของ DN-0458 (ตัวอย่าง)');
+  return D;
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function vLogin(msg=''){
+  $('#tabs').innerHTML = ''; $('#topright').innerHTML = ''; $('#banner').innerHTML = '';
+  $('#main').innerHTML = `<form class="panel login" data-form="login"><h2>เข้าสู่ระบบเครื่องนี้</h2>
+    <p class="ink2" style="margin:0">ใช้บัญชีแท็บเล็ตหน้างาน หรือบัญชีผู้บริหาร ระบบจะจำการเข้าสู่ระบบไว้ในเครื่องนี้</p>
+    <div class="field"><label for="lg-email">อีเมล</label><input id="lg-email" class="input" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="lg-pass">รหัสผ่าน</label><input id="lg-pass" class="input" type="password" autocomplete="current-password" required></div>
+    ${msg ? `<div class="err" style="text-align:left">${esc(msg)}</div>` : ''}
+    <button class="btn btn-primary btn-xl" type="submit">เข้าสู่ระบบ</button></form>`;
+  $('#main').querySelector('form').onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await S.sb.auth.signInWithPassword({email:$('#lg-email').value.trim(), password:$('#lg-pass').value});
+    if(error) return vLogin('เข้าสู่ระบบไม่สำเร็จ: ' + error.message);
+    await afterLogin();
+  };
+}
+async function afterLogin(){
+  try {
+    const { data:{ user } } = await S.sb.auth.getUser();
+    const { data:prof, error } = await S.sb.from('profiles').select('role').eq('id', user.id).single();
+    if(error) throw error;
+    S.deviceRole = prof?.role || 'station';
+    await loadAll(); render();
+  } catch(e){ vLogin('โหลดข้อมูลไม่ได้: ' + errMsg(e)) }
+}
+async function boot(){
+  if(S.mode==='demo'){ await loadAll(); render(); return }
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js');
+    S.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    const { data:{ session } } = await S.sb.auth.getSession();
+    if(!session) return vLogin();
+    await afterLogin();
+  } catch(e){ $('#main').innerHTML = `<div class="empty">เชื่อมต่อ Supabase ไม่ได้: ${esc(errMsg(e))}</div>` }
+}
+boot();
+</script>
+
+</body>
+</html>
