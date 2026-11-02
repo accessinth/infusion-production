@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "0.3.16",
+    "@supabase/supabase-js": "2.118.0",
     "qrcode-generator": "1.4.4"
   }
 }

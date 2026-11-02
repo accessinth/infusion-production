@@ -310,8 +310,8 @@ textarea.input{min-height:76px;resize:vertical}
    การเชื่อมต่อ Supabase — เว้นว่างไว้ = โหมดทดลอง (ข้อมูลตัวอย่าง เก็บในเบราว์เซอร์)
    ===================================================================== */
 const CONFIG = {
-  SUPABASE_URL: "",       // เช่น https://abcdxyz.supabase.co
-  SUPABASE_ANON_KEY: ""   // Settings → API Keys → Publishable key (sb_publishable_…) · ใส่ในหน้าเว็บได้ ข้อมูลป้องกันด้วย RLS
+  SUPABASE_URL: "https://kycwktvdprtzdpefsjcr.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_NlFEnUTdlhGRstBaNFzdWg_xn4aVcCt"   // Publishable key · ใส่ในหน้าเว็บได้ ข้อมูลป้องกันด้วย RLS
 };
 
 /* ---------- ค่าคงที่ของกระบวนการ ---------- */
@@ -346,11 +346,14 @@ const TABS = [
   {id:'settings', label:'ตั้งค่า', min:3}
 ];
 const FRAMED = (()=>{ try { return window.self !== window.top } catch(e){ return true } })();
+const HAS_CLOUD = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+// โหมดทดลองแยกจากข้อมูลจริง: เปิดลิงก์ด้วย ?demo หรือ #demo (ใช้ฝึกช่าง) · ใน claude.ai artifact เป็นโหมดทดลองเสมอ
+const FORCE_DEMO = FRAMED || /[?&]demo\b/.test(location.search) || location.hash==='#demo';
 const SESSION_MIN = 10;
 
 /* ---------- state ---------- */
 const S = {
-  mode: (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) ? 'supabase' : 'demo',
+  mode: (HAS_CLOUD && !FORCE_DEMO) ? 'supabase' : 'demo',
   deviceRole: 'manager', sb: null, data: {}, view: 'floor',
   stationStep: lsGet('stationStep') || 'S1',
   session: null, dashRange: 30, orderFilter: 'open', setTab: 'workers', sheet: null, confirmKey: null
@@ -581,8 +584,9 @@ function renderBanner(){
   if(S.mode!=='demo'){ $('#banner').innerHTML = ''; return }
   const armed = S.confirmKey==='reset';
   $('#banner').innerHTML = `<div class="banner"><div class="banner-in">
-    <span><b>โหมดทดลอง</b> · ข้อมูลทั้งหมดเป็นตัวอย่างและเก็บอยู่ในเบราว์เซอร์นี้เท่านั้น · PIN ของทุกคนคือ <b class="mono">1234</b></span>
+    <span><b>โหมดทดลอง</b> · ข้อมูลทั้งหมดเป็นตัวอย่างและเก็บอยู่ในเบราว์เซอร์นี้เท่านั้น ไม่ปนกับข้อมูลจริง · PIN ของทุกคนคือ <b class="mono">1234</b></span>
     <button class="btn btn-sm ${armed ? 'btn-danger' : 'btn-ghost'}" data-act="resetDemo">${armed ? 'แตะอีกครั้งเพื่อสร้างข้อมูลตัวอย่างใหม่' : 'สร้างข้อมูลตัวอย่างใหม่'}</button>
+    ${HAS_CLOUD && !FRAMED ? `<a class="btn btn-sm" href="./">ไปหน้าใช้งานจริง</a>` : ''}
   </div></div>`;
 }
 function render(){
@@ -1549,7 +1553,8 @@ function vLogin(msg=''){
     <div class="field"><label for="lg-email">อีเมล</label><input id="lg-email" class="input" type="email" autocomplete="username" required></div>
     <div class="field"><label for="lg-pass">รหัสผ่าน</label><input id="lg-pass" class="input" type="password" autocomplete="current-password" required></div>
     ${msg ? `<div class="err" style="text-align:left">${esc(msg)}</div>` : ''}
-    <button class="btn btn-primary btn-xl" type="submit">เข้าสู่ระบบ</button></form>`;
+    <button class="btn btn-primary btn-xl" type="submit">เข้าสู่ระบบ</button>
+    <a class="btn btn-ghost" href="?demo">ลองใช้โหมดทดลอง (ข้อมูลตัวอย่าง ไม่บันทึกจริง)</a></form>`;
   $('#main').querySelector('form').onsubmit = async e => {
     e.preventDefault();
     const { error } = await S.sb.auth.signInWithPassword({email:$('#lg-email').value.trim(), password:$('#lg-pass').value});
@@ -1569,7 +1574,7 @@ async function afterLogin(){
 async function boot(){
   if(S.mode==='demo'){ await loadAll(); render(); return }
   try {
-    await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js');
     S.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
     const { data:{ session } } = await S.sb.auth.getSession();
     if(!session) return vLogin();

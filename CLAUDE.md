@@ -35,7 +35,7 @@ src/app.html          ต้นฉบับแอป (ไฟล์เดีย�
 build.py              สร้าง index.html จาก src/app.html
 index.html            ไฟล์ที่ GitHub Pages เสิร์ฟ (สร้างจาก build — ห้ามแก้ตรง)
 supabase/schema.sql   ตาราง, RLS, ฟังก์ชัน PIN, bucket รูป, ข้อมูลเริ่มต้น (รันซ้ำได้)
-tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 43 ข้อ (Playwright + Chrome) บนโหมดทดลอง
+tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 45 ข้อ (Playwright + Chrome) บนโหมดทดลอง (?demo) + ตรวจว่าลิงก์หลักขึ้นหน้าเข้าสู่ระบบ
 tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 28 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
 ```
 
@@ -45,7 +45,7 @@ tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 28 ข้อ �
 python3 build.py                                   # ทุกครั้งที่แก้ src/app.html
 cd tests && npm install
 npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 28/28 ทั้งคู่)
-pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 43/43) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
+pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 45/45) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
 python3 -m http.server 8000                        # เปิด http://localhost:8000/index.html
 ```
 
@@ -60,8 +60,8 @@ python3 -m http.server 8000                        # เปิด http://localho
   - `openSheet(fn, ...args)` เปิดแผงด้านขวา (ใบงาน ฟอร์มต่าง ๆ) และ `refreshSheet()` วาดซ้ำหลังข้อมูลเปลี่ยน
   - event ใช้ delegation: ปุ่มมี `data-act="ชื่อ"` แล้วเรียก `ACT[ชื่อ](dataset, el)` ส่วนปุ่มแบบเลือก (`seg()`) เรียก `ON[data-on]`
 - **2 โหมดข้อมูล** เลือกจาก `CONFIG` บนสุดของสคริปต์
-  - ค่าว่าง = **โหมดทดลอง:** เก็บใน localStorage key `DEMO_KEY` และสร้างข้อมูลตัวอย่างด้วย `seedDemo()`
-  - มีค่า = **Supabase:** โหลด supabase-js 2.45.4 แบบ UMD จาก jsDelivr
+  - **Supabase (ค่าปัจจุบัน):** โปรเจกต์ `kycwktvdprtzdpefsjcr` (Singapore, org marshal-invoice, Free) ใช้ Publishable key โหลด supabase-js 2.118.0 แบบ UMD จาก jsDelivr
+  - **โหมดทดลอง:** เปิดเมื่อ CONFIG ว่าง หรือลิงก์มี `?demo` / `#demo` หรือรันใน iframe (claude.ai artifact) เก็บใน localStorage key `DEMO_KEY` และสร้างข้อมูลตัวอย่างด้วย `seedDemo()` ใช้ฝึกช่างได้โดยไม่ปนข้อมูลจริง
   - UI ทุกส่วนต้องผ่านชั้นข้อมูลเท่านั้น: `loadAll`, `dbInsert`, `dbUpdate`, `saveSetting`, `verifyPin`, `setPin`, `uploadPhoto`, `refreshPiece` **ถ้าเพิ่มความสามารถ ต้องรองรับทั้งสองโหมด**
   - id สร้างฝั่ง client เป็น uuid ทั้งหมด
 - **สถานะชิ้นงานไม่เก็บในฐานข้อมูล** คำนวณจาก `step_logs` + `qc_records` ใน `computeState()` ได้ค่าใดค่าหนึ่งต่อไปนี้
@@ -112,14 +112,15 @@ python3 -m http.server 8000                        # เปิด http://localho
 
 ## สถานะปัจจุบัน (2 พ.ย. 2026)
 
-- ทดสอบโหมดทดลองแล้ว 43/43 และฐานข้อมูล/สิทธิ์ 28/28
-- **ส่วนที่เชื่อมกับ Supabase จริงยังไม่เคยทดสอบ** ได้แก่ login, `loadAll`, insert/update, rpc และ storage upload
+- ทดสอบโหมดทดลองแล้ว 45/45 และฐานข้อมูล/สิทธิ์ 28/28
+- **รัน schema.sql บนโปรเจกต์จริงแล้ว** (2 พ.ย.) ตรวจแล้ว: 11 ตารางเปิด RLS, 39 policies, anon ไม่มีสิทธิ์ตาราง/view/verify_pin, bucket qc-photos + 2 policies, trigger สร้าง profile
+- ทดสอบจากเบราว์เซอร์จริงด้วย Publishable key แล้ว (supabase-js 2.45.4 และ 2.118.0): key ใช้ได้, คนนอกถูกปฏิเสธทุกทาง (ตาราง, view, rpc, storage)
+- **ยังไม่ได้ทดสอบ flow ที่ล็อกอินแล้ว** รอเจ้าของสร้างบัญชี station/manager ใน Authentication → Users
 - ขึ้น GitHub Pages แล้วที่ https://accessinth.github.io/infusion-production/ (deploy จาก main / root, มี `.nojekyll`) ทุกครั้งที่ push main เว็บจะอัปเดตเองภายใน 1–2 นาที
-- เจ้าของยังไม่ได้สร้างโปรเจกต์ Supabase แอปบนเว็บจึงยังเป็นโหมดทดลอง
 
 ## งานที่ต้องทำต่อ (เรียงตามความสำคัญ)
 
-1. **ทดสอบกับ Supabase จริง:** ใส่ URL + **Publishable key** (`sb_publishable_…`) ใน `CONFIG` เพราะ Supabase เลิกใช้ anon key แบบเดิมภายในสิ้นปี 2026 และ supabase-js 2.45.4 ที่ใช้อยู่ออกก่อนระบบคีย์ใหม่ ถ้า login/query/upload มีปัญหากับ publishable key ให้อัปเกรด supabase-js เป็นเวอร์ชันล่าสุดที่ออกมาแล้วเกิน 2 สัปดาห์ แล้วทดสอบทุก flow ด้วยบัญชี station และ manager รวมถึงอัปโหลดรูป QC และกรณีแท็บเล็ต 2 เครื่องกดเริ่มชิ้นเดียวกันพร้อมกัน
+1. **ทดสอบ flow ที่ล็อกอินแล้วกับ Supabase จริง:** (เชื่อม CONFIG แล้ว ใช้ Publishable key เพราะ Supabase เลิกใช้ anon key แบบเดิมภายในสิ้นปี 2026) ทดสอบทุก flow ด้วยบัญชี station และ manager รวมถึงอัปโหลดรูป QC และกรณีแท็บเล็ต 2 เครื่องกดเริ่มชิ้นเดียวกันพร้อมกัน
 2. **หลายคนทำขั้นเดียวกัน:** เช่น ปูใยแก้วตัวเรือใช้ช่าง 3 คน ตอนนี้ log มีคนเดียวทำให้ค่าแรงต่ำกว่าจริง แนวทางคือเพิ่มตาราง `step_log_workers` หรือคอลัมน์ `worker_ids uuid[]` แล้วคิดค่าแรงรายคน ต้องแก้ผลงานรายคนใน Dashboard ด้วย
 3. **พัก/ทำต่อ:** เก็บช่วงเวลาทำงานจริงเป็นหลายช่วงต่อ log แล้วคำนวณเวลาจากผลรวมของช่วง
 4. **ทำงานตอนเน็ตหลุด:** เก็บรายการที่บันทึกไม่สำเร็จไว้ในเครื่อง แล้วส่งใหม่เมื่อเน็ตกลับมา

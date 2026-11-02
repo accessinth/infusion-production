@@ -8,13 +8,14 @@ except Exception: pass
 SP = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(SP)
 QR = open(os.path.join(SP, 'node_modules/qrcode-generator/qrcode.js'), encoding='utf-8').read()
+SBJS = open(os.path.join(SP, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js'), encoding='utf-8').read()
 SHOTS = os.path.join(SP, 'shots'); os.makedirs(SHOTS, exist_ok=True)
 
 handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=APP_DIR)
 handler.log_message = lambda *a: None
 srv = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), handler)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
-URL = 'http://127.0.0.1:8765/index.html'
+URL = 'http://127.0.0.1:8765/index.html?demo'   # ?demo บังคับโหมดทดลอง แม้ CONFIG จะชี้ไป Supabase จริงแล้ว
 
 results, errors = [], []
 def check(name, ok, info=''):
@@ -23,6 +24,7 @@ def check(name, ok, info=''):
 def route(r):
     u = r.request.url
     if 'qrcode-generator' in u: return r.fulfill(status=200, content_type='application/javascript', body=QR)
+    if '@supabase/supabase-js' in u: return r.fulfill(status=200, content_type='application/javascript', body=SBJS)
     if u.startswith('http://127.0.0.1'): return r.continue_()
     return r.abort()
 
@@ -47,6 +49,15 @@ with sync_playwright() as p:
         for k in code: pg.click(f'#modal [data-m="key"][data-k="{k}"]')
         pg.click('#modal [data-m="ok"]')
         pg.wait_for_selector('#modal', state='hidden', timeout=5000)
+
+    # ---------- โหมดใช้งานจริง (ไม่มี ?demo) ต้องขึ้นหน้าเข้าสู่ระบบ ไม่ใช้ข้อมูลตัวอย่าง ----------
+    live = ctx.new_page(); live.on('pageerror', lambda e: errors.append('LIVE PAGEERROR ' + str(e)))
+    live.goto(URL.split('?')[0], wait_until='domcontentloaded')
+    live.wait_for_selector('form[data-form="login"], .empty', timeout=15000)
+    check('ลิงก์หลักใช้ Supabase จริง → ขึ้นหน้าเข้าสู่ระบบ', live.locator('#lg-email').count() == 1 and live.evaluate("S.mode") == 'supabase',
+          live.evaluate("S.mode"))
+    check('หน้าเข้าสู่ระบบมีทางไปโหมดทดลอง', live.locator('a[href="?demo"]').count() == 1)
+    live.close()
 
     st = E("(() => { const c = {}; for(const p of S.data.pieces){ const s = M.state[p.id]; c[s.status] = (c[s.status]||0)+1 } return c })()")
     check('โหลดแอปและข้อมูลตัวอย่าง', sum(st.values()) > 10, json.dumps(st, ensure_ascii=False))
