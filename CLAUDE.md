@@ -113,7 +113,8 @@ python3 -m http.server 8000                        # เปิด http://localho
 
 - ทดสอบโหมดทดลองแล้ว 43/43 และฐานข้อมูล/สิทธิ์ 27/27
 - **ส่วนที่เชื่อมกับ Supabase จริงยังไม่เคยทดสอบ** ได้แก่ login, `loadAll`, insert/update, rpc และ storage upload
-- เจ้าของยังไม่ได้สร้างโปรเจกต์ Supabase และยังไม่ได้ขึ้น GitHub Pages
+- ขึ้น GitHub Pages แล้วที่ https://accessinth.github.io/infusion-production/ (deploy จาก main / root, มี `.nojekyll`) ทุกครั้งที่ push main เว็บจะอัปเดตเองภายใน 1–2 นาที
+- เจ้าของยังไม่ได้สร้างโปรเจกต์ Supabase แอปบนเว็บจึงยังเป็นโหมดทดลอง
 
 ## งานที่ต้องทำต่อ (เรียงตามความสำคัญ)
 
