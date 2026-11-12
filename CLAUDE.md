@@ -54,6 +54,14 @@
 
 ค่าคงที่ทั้งหมดอยู่ใน `STEPS`, `ROUTE_DEF`, `DEFECTS` ใน `src/app.html`
 
+### แท็บแผนงาน (Kanban)
+
+- เปิดดูได้ทุกคนโดยไม่ต้องใส่ PIN · หน้าไทยเสมอ (`THAI_VIEWS`) · โค้ดใน `vKanban()` / `shKbGroup()`
+- ชิ้นงานที่ยังไม่เสียอยู่ในคอลัมน์เดียว (`kbStage`): ขั้นที่กำลังทำ/รอทำ · `QC` = รอ QC สุดท้าย · `DONE` = พร้อมส่งภายใน `KB_DONE_DAYS` (14) วัน
+- การ์ด = สินค้า + เส้นทาง ในคอลัมน์นั้น เรียงตามกำหนดส่งใกล้สุด · หัวคอลัมน์มี "งานคงค้าง" = ผลรวมเวลามาตรฐานของชิ้นในขั้นนั้น
+- กรองตามกลุ่มงาน (ทั้งหมด / งานเรือ / JB / JW / CP / CF / งานรถ) · ขั้นที่ไม่มีงานซ่อนไว้ กด "ทุกขั้น" เพื่อแสดง
+- ด้านล่างมีตารางสรุปตามสินค้า (แบบรายงานสถานะที่เจ้าของเคยเขียนมือ)
+
 ## โครงสร้างโปรเจกต์
 
 ```
@@ -61,8 +69,8 @@ src/app.html          ต้นฉบับแอป (ไฟล์เดีย�
 build.py              สร้าง index.html จาก src/app.html
 index.html            ไฟล์ที่ GitHub Pages เสิร์ฟ (สร้างจาก build — ห้ามแก้ตรง)
 supabase/schema.sql   ตาราง, RLS, ฟังก์ชัน PIN, bucket รูป, ข้อมูลเริ่มต้น (รันซ้ำได้)
-tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 86 ข้อ (Playwright + Chrome) บนโหมดทดลอง (?demo) + ตรวจว่าลิงก์หลักขึ้นหน้าเข้าสู่ระบบ
-tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 41 ข้อ บน PGlite (จำลอง role/auth/storage ของ Supabase)
+tests/e2e.py          ทดสอบผ่านเบราว์เซอร์ 93 ข้อ (Playwright + Chrome) บนโหมดทดลอง (?demo) + ตรวจว่าลิงก์หลักขึ้นหน้าเข้าสู่ระบบ
+tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 39 ข้อ (41 เมื่อมีไฟล์ทดสอบการอัปเกรด) บน PGlite (จำลอง role/auth/storage ของ Supabase)
 ```
 
 ## คำสั่ง
@@ -70,8 +78,8 @@ tests/dbtest.mjs      ทดสอบ schema + สิทธิ์ 41 ข้อ �
 ```bash
 python3 build.py                                   # ทุกครั้งที่แก้ src/app.html
 cd tests && npm install
-npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 41/41 ทั้งคู่)
-pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 86/86) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
+npm run test:db                                    # ทดสอบฐานข้อมูล 2 โหมดสิทธิ์ (ต้องผ่าน 39/39 ทั้งคู่)
+pip install playwright && python3 e2e.py           # ทดสอบแอป (ต้องผ่าน 93/93) ใช้ Chrome ในเครื่อง หรือ CHROME_PATH
 python3 -m http.server 8000                        # เปิด http://localhost:8000/index.html
 ```
 

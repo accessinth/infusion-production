@@ -174,6 +174,7 @@ tr.click{cursor:pointer} tr.click:hover td{background:var(--surface-2)}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
 .kpi .v{font:700 2rem/1.15 var(--f-display);font-variant-numeric:tabular-nums}
 .kpi .s{font-size:.84rem;color:var(--muted)}
+.kpi .v.bad{color:var(--bad)}
 .dash-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
 @media (max-width:1180px){.dash-grid{grid-template-columns:minmax(0,1fr)}}
 
@@ -190,6 +191,33 @@ tr.click{cursor:pointer} tr.click:hover td{background:var(--surface-2)}
 .wip-track span:last-child{border-radius:0 4px 4px 0}
 .wip-track span:only-child{border-radius:4px}
 .s-work{background:var(--accent)} .s-wait{background:var(--accent-mid)} .s-qc{background:var(--warn)}
+/* แผนงาน (Kanban): คอลัมน์ตามขั้นตอน เลื่อนแนวนอนภายในกรอบ หน้าไม่ล้น */
+.kb-wrap{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.kb{display:flex;gap:10px;align-items:flex-start;min-width:min-content}
+.kb-col{flex:1 0 210px}
+.kb-col.idle{flex:0 0 118px;opacity:.85}
+.kb-col.idle .kb-head .s,.kb-col.idle .kb-cards{display:none}
+.kb-col{background:var(--surface-2);border:1px solid var(--line);border-top:4px solid var(--kc,var(--accent-mid));border-radius:12px;display:flex;flex-direction:column;min-width:0}
+.kb-col.idle{--kc:var(--line-2)}
+.kb-col.qc{--kc:var(--warn)} .kb-col.done{--kc:var(--good)}
+.kb-head{padding:10px 12px 8px;display:flex;flex-direction:column;gap:3px}
+.kb-head .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:600;line-height:1.3}
+.kb-head .n{font:700 1.5rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+.kb-head .s{font-size:.8rem;color:var(--muted)}
+.kb-cards{display:flex;flex-direction:column;gap:8px;padding:0 8px 10px}
+.kb-card{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:inherit;min-height:44px}
+.kb-card:hover{border-color:var(--line-2);box-shadow:var(--shadow)}
+.kb-card.working{border-left:4px solid var(--accent)}
+.kb-card .r1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.kb-card .nm{font-weight:600;line-height:1.3}
+.kb-card .q{font:700 1.35rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+.kb-card .m{font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.kb-card .r2{display:flex;flex-wrap:wrap;gap:4px}
+.kb-none{font-size:.85rem;color:var(--muted);padding:0 4px 8px}
+.kb-matrix th,.kb-matrix td{text-align:right;font-variant-numeric:tabular-nums}
+.kb-matrix th:first-child,.kb-matrix td:first-child{text-align:left}
+.kb-matrix td.z{color:var(--line-2)}
+.kb-matrix tfoot td{font-weight:700;border-top:2px solid var(--ink)}
 
 /* ---- sheet & modal ---- */
 .sheet{position:fixed;inset:0;z-index:40;display:flex;justify-content:flex-end}
@@ -374,6 +402,7 @@ const UNIT_NAME = {kg:'กก.', m:'ม.', pcs:'ชิ้น'};
 const TABLES = ['workers','materials','products','settings','orders','order_items','pieces','step_logs','qc_records','stock_receipts'];
 const TABS = [
   {id:'floor', label:'หน้างาน', min:0},
+  {id:'kanban', label:'แผนงาน', min:0},
   {id:'qc', label:'QC', min:2},
   {id:'orders', label:'ออเดอร์', min:2},
   {id:'stock', label:'สต็อกวัสดุ', min:2},
@@ -397,6 +426,7 @@ const I18N = {
   'lang':            ['ภาษา', 'ភាសា', 'ဘာသာစကား'],
   'tab.floor':       ['หน้างาน', 'កន្លែងការងារ', 'လုပ်ငန်းခွင်'],
   'tab.qc':          ['QC', 'QC', 'QC'],
+  'tab.kanban':      ['แผนงาน', 'ផែនការការងារ', 'အလုပ်အစီအစဉ်'],
   'tab.orders':      ['ออเดอร์', 'ការបញ្ជាទិញ', 'အော်ဒါ'],
   'tab.stock':       ['สต็อกวัสดุ', 'ស្តុកសម្ភារៈ', 'ပစ္စည်းစတော့'],
   'tab.dash':        ['ผู้บริหาร', 'អ្នកគ្រប់គ្រង', 'မန်နေဂျာ'],
@@ -666,7 +696,7 @@ const S = {
   deviceRole: 'manager', sb: null, data: {}, view: 'floor',
   stationStep: lsGet('stationStep') || 'S1',
   lang: (k => LANG_IDX.hasOwnProperty(k) ? k : 'th')(lsGet('lang')),
-  session: null, dashRange: 30, orderFilter: 'open', setTab: 'workers', sheet: null, confirmKey: null
+  session: null, dashRange: 30, orderFilter: 'open', kbFilter: 'all', kbAll: false, setTab: 'workers', sheet: null, confirmKey: null
 };
 let M = {};
 
@@ -996,14 +1026,14 @@ function renderBanner(){
 }
 function render(){
   renderTabs(); renderTop(); renderBanner();
-  const V = {floor:vFloor, qc:vQC, orders:vOrders, stock:vStock, dash:vDash, settings:vSettings}[S.view] || vFloor;
+  const V = {floor:vFloor, kanban:vKanban, qc:vQC, orders:vOrders, stock:vStock, dash:vDash, settings:vSettings}[S.view] || vFloor;
   $('#main').innerHTML = THAI_VIEWS.has(S.view) ? inLang('th', V) : V();
   if(S.sheet) refreshSheet();
 }
 function openSheet(fn, ...args){ S.sheet = {fn, args}; $('#sheet').hidden = false; refreshSheet(); $('#sheetBody').scrollTop = 0; document.body.style.overflow = 'hidden' }
 // หน้าออเดอร์/สต็อก/ผู้บริหาร/ตั้งค่า เป็นภาษาไทยเสมอ (ผู้ใช้เป็นหัวหน้าและผู้บริหาร)
-const THAI_VIEWS = new Set(['orders','stock','dash','settings']);
-const THAI_SHEETS = new Set([shOrderForm, shOrder, shLabels, shStockForm, shWorkerForm, shMaterialForm, shProductForm]);
+const THAI_VIEWS = new Set(['kanban','orders','stock','dash','settings']);
+const THAI_SHEETS = new Set([shOrderForm, shOrder, shLabels, shStockForm, shWorkerForm, shMaterialForm, shProductForm, shKbGroup]);
 function refreshSheet(){
   if(!S.sheet) return; const st = $('#sheetBody').scrollTop;
   const draw = () => S.sheet.fn(...S.sheet.args);
@@ -1356,6 +1386,89 @@ function shQC(pid, point){
       <div class="field"><label for="qc-photo">${tr('qc.photo')}</label><input id="qc-photo" type="file" accept="image/*" capture="environment" class="input"></div>
       <div><button class="btn btn-primary btn-xl" data-act="saveQC" data-id="${p.id}">${tr('qc.save')}</button></div>
     </div></div>`;
+}
+
+/* =====================================================================
+   VIEW: แผนงาน (Kanban) — ชิ้นงานทุกชิ้นอยู่ในคอลัมน์ของขั้นที่กำลังทำ/รอทำ
+   การ์ด = สินค้า + เส้นทาง ในคอลัมน์นั้น · ใช้วางแผนว่าขั้นไหนงานกอง และงานไหนใกล้กำหนดส่ง
+   ===================================================================== */
+const KB_DONE_DAYS = 14;
+const KB_FILTERS = [['all','ทั้งหมด'],['boat','งานเรือ'],['JB','JelCode ดำ'],['JW','JelCode ขาว'],['CP','สีตามลูกค้า'],['CF','Carbon'],['car','งานรถ (A/B)']];
+function kbMatch(route, f){ return f==='all' || (f==='boat' ? !!routeDef(route).boat : f==='car' ? !routeDef(route).boat : route===f) }
+// คอลัมน์ของชิ้นงาน: รหัสขั้น (กำลังทำ/รอ) · QC (รอ QC สุดท้าย) · DONE (พร้อมส่งภายใน 14 วัน) · null = ไม่แสดง
+function kbStage(p){
+  const s = M.state[p.id];
+  if(s.status==='working' || s.status==='waiting') return s.step;
+  if(s.status==='qc') return 'QC';
+  if(s.status==='done' && toDate(s.doneAt) >= Date.now() - KB_DONE_DAYS*86400000) return 'DONE';
+  return null;
+}
+const kbStageName = k => k==='QC' ? 'รอ QC ขั้นสุดท้าย' : k==='DONE' ? `พร้อมส่ง (${KB_DONE_DAYS} วัน)` : stepName(k);
+function kbData(){
+  const f = S.kbFilter, inUse = [...routesInUse()].filter(r => kbMatch(r, f));
+  const used = new Set(); for(const r of inUse) routeDef(r).steps.forEach(k => used.add(k));
+  const pieces = S.data.pieces.filter(p => !p.scrapped && kbMatch(p.route, f)).map(p => ({p, k: kbStage(p)})).filter(x => x.k);
+  for(const x of pieces) if(STEPS[x.k]) used.add(x.k);
+  const cols = [...STEP_ORDER.filter(k => used.has(k)), 'QC', 'DONE'];
+  return {cols, pieces};
+}
+function vKanban(){
+  const inUse = routesInUse(), {cols, pieces} = kbData();
+  const opts = KB_FILTERS.filter(([v]) => v==='all' || [...inUse].some(r => kbMatch(r, v)));
+  const due = p => M.order[p.order_id]?.due_date || '';
+  const byCol = {}; for(const c of cols) byCol[c] = [];
+  for(const x of pieces) (byCol[x.k] ||= []).push(x.p);
+  const colHtml = c => {
+    const ps = byCol[c] || [], working = ps.filter(p => M.state[p.id].status==='working').length;
+    const load = STEPS[c] ? ps.reduce((a,p) => a + num(stdFor(p, c)?.minutes), 0) : 0;
+    const groups = {}; for(const p of ps){ const key = p.product_id + '|' + p.route; (groups[key] ||= []).push(p) }
+    const cards = Object.values(groups).map(g => ({g, d: g.map(due).filter(Boolean).sort()[0] || '9999'}))
+      .sort((a,b) => a.d < b.d ? -1 : a.d > b.d ? 1 : (M.product[a.g[0].product_id]?.name || '').localeCompare(M.product[b.g[0].product_id]?.name || ''))
+      .map(({g, d}) => { const p0 = g[0], pr = M.product[p0.product_id], w = g.filter(p => M.state[p.id].status==='working').length;
+        const ords = [...new Set(g.map(p => M.order[p.order_id]?.order_no).filter(Boolean))];
+        return `<button class="kb-card ${w ? 'working' : ''}" data-act="kbGroup" data-stage="${c}" data-prod="${p0.product_id}" data-route="${p0.route}">
+          <span class="r1"><span class="nm">${esc(pr?.name || '–')}</span><span class="q">${g.length}</span></span>
+          <span class="m">${p0.route} · ${esc(routeName(p0.route))}${w ? ` · <b>กำลังทำ ${w}</b>` : ''}</span>
+          <span class="r2">${d!=='9999' ? dueChip(d, c==='DONE') : ''}</span>
+          <span class="m mono">${esc(ords.slice(0,3).join(', '))}${ords.length > 3 ? ` +${ords.length-3}` : ''}</span></button>` }).join('');
+    const cls = (c==='QC' ? 'qc' : c==='DONE' ? 'done' : '') + (ps.length ? '' : ' idle');
+    return `<section class="kb-col ${cls}" data-col="${c}"><div class="kb-head">
+      <div class="t"><span>${esc(kbStageName(c))}</span><span class="n">${ps.length || '<span class="muted" style="font-size:.85rem;font-weight:500">ว่าง</span>'}</span></div>
+      <div class="s">${STEPS[c] ? `กำลังทำ ${working} · รอ ${ps.length - working}` : c==='QC' ? 'ต้องผ่านก่อนนับพร้อมส่ง' : 'ผ่าน QC ครบทุกขั้นแล้ว'}${load > 0 ? ` · งานคงค้าง ≈ ${fMins(load)}` : ''}</div></div>
+      <div class="kb-cards">${cards || '<div class="kb-none">ไม่มีงาน</div>'}</div></section>`;
+  };
+  // ตารางสรุปตามสินค้า (แบบรายงานสถานะที่เคยเขียนมือ)
+  const rows = {}; for(const x of pieces){ const key = x.p.product_id + '|' + x.p.route; (rows[key] ||= {p:x.p, n:0, c:{}}); rows[key].n++; rows[key].c[x.k] = (rows[key].c[x.k]||0) + 1 }
+  const rlist = Object.values(rows).sort((a,b) => (M.product[a.p.product_id]?.name || '').localeCompare(M.product[b.p.product_id]?.name || '') || a.p.route.localeCompare(b.p.route));
+  const tot = c => pieces.filter(x => x.k===c).length;
+  const total = pieces.length, wipN = pieces.filter(x => STEPS[x.k]).length, qcN = tot('QC'), doneN = tot('DONE');
+  const late = pieces.filter(x => x.k!=='DONE' && M.order[x.p.order_id]?.due_date && daysTo(M.order[x.p.order_id].due_date) < 0).length;
+  const busiest = cols.filter(c => STEPS[c]).map(c => [c, tot(c)]).sort((a,b) => b[1]-a[1])[0];
+  const mcols = cols.filter(c => tot(c) > 0);
+  // ขั้นที่ไม่มีงานซ่อนไว้ก่อน (กดแสดงได้) ให้คอลัมน์ที่มีงานอยู่ในจอ · รอ QC และพร้อมส่งแสดงเสมอ
+  const idle = cols.filter(c => STEPS[c] && !tot(c)), shown = S.kbAll ? cols : cols.filter(c => !idle.includes(c));
+  return `<section class="section"><div class="sec-head"><h2>แผนงาน<span class="count">${total} ชิ้น</span></h2>${seg('kbf', opts, S.kbFilter, 'small', 'kbFilter')}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="eyebrow">อยู่ระหว่างผลิต</span><span class="v">${wipN}</span><span class="s">ชิ้น</span></div>
+      <div class="kpi"><span class="eyebrow">รอ QC สุดท้าย</span><span class="v">${qcN}</span><span class="s">ชิ้น</span></div>
+      <div class="kpi"><span class="eyebrow">พร้อมส่ง (${KB_DONE_DAYS} วัน)</span><span class="v">${doneN}</span><span class="s">ชิ้น</span></div>
+      <div class="kpi"><span class="eyebrow">เลยกำหนดส่ง</span><span class="v ${late ? 'bad' : ''}">${late}</span><span class="s">ชิ้นที่ยังไม่เสร็จ</span></div>
+      <div class="kpi"><span class="eyebrow">ขั้นที่งานกองมากสุด</span><span class="v">${busiest && busiest[1] ? busiest[1] : 0}</span><span class="s">${busiest && busiest[1] ? esc(stepName(busiest[0])) : '–'}</span></div>
+    </div>
+    ${idle.length ? `<div class="row" style="justify-content:space-between"><span class="muted" style="font-size:.88rem">${S.kbAll ? `แสดงครบ ${cols.length - 2} ขั้นตามลำดับการผลิต` : `ซ่อน ${idle.length} ขั้นที่ไม่มีงาน: ${esc(idle.map(stepName).join(', '))}`}</span>
+      ${seg('kball', [['0','เฉพาะขั้นที่มีงาน'],['1','ทุกขั้น']], S.kbAll ? '1' : '0', 'small', 'kbAll')}</div>` : ''}
+    <div class="kb-wrap"><div class="kb">${shown.map(colHtml).join('')}</div></div></section>
+  <section class="section"><div class="sec-head"><h2>สรุปตามสินค้า</h2><span class="muted">จำนวนชิ้นในแต่ละขั้น (เฉพาะขั้นที่มีงาน) · แตะการ์ดด้านบนเพื่อดูรายชิ้น</span></div>
+    ${rlist.length ? `<div class="table-wrap"><table class="kb-matrix"><thead><tr><th>สินค้า</th><th>เส้นทาง</th><th>ทั้งหมด</th>${mcols.map(c => `<th>${esc(kbStageName(c))}</th>`).join('')}</tr></thead><tbody>
+      ${rlist.map(r => `<tr><td>${esc(M.product[r.p.product_id]?.name || '–')}</td><td>${r.p.route}</td><td><b>${r.n}</b></td>${mcols.map(c => r.c[c] ? `<td>${r.c[c]}</td>` : '<td class="z">–</td>').join('')}</tr>`).join('')}
+      </tbody><tfoot><tr><td>รวม</td><td></td><td>${total}</td>${mcols.map(c => `<td>${tot(c)}</td>`).join('')}</tr></tfoot></table></div>` : '<div class="empty">ไม่มีงานในกลุ่มนี้</div>'}
+  </section>`;
+}
+function shKbGroup(stage, prodId, route){
+  const ps = S.data.pieces.filter(p => !p.scrapped && p.product_id===prodId && p.route===route && kbStage(p)===stage)
+    .sort((a,b) => (M.order[a.order_id]?.due_date || '9999') < (M.order[b.order_id]?.due_date || '9999') ? -1 : 1);
+  return sheetHead(`${esc(M.product[prodId]?.name || '–')} · ${esc(kbStageName(stage))}`, `เส้นทาง ${route} · ${esc(routeName(route))} · ${ps.length} ชิ้น`) +
+    `<div class="sheet-body">${ps.length ? `<div class="cards">${ps.map(pieceCard).join('')}</div>` : '<div class="empty">ไม่มีชิ้นงานในกลุ่มนี้แล้ว</div>'}</div>`;
 }
 
 /* =====================================================================
@@ -1810,6 +1923,7 @@ const ACT = {
     });
   },
   openOrder(d){ openSheet(shOrder, d.id) },
+  kbGroup(d){ openSheet(shKbGroup, d.stage, d.prod, d.route) },
   openLabels(d){ openSheet(shLabels, d.id) },
   print(){ window.print() },
   stockForm(d){ openSheet(shStockForm, d.id) },
@@ -1885,6 +1999,8 @@ function syncStdPanels(){
 const ON = {
   qcResChange(v){ $('#qc-more').hidden = v==='pass'; $('#qc-rework-f').hidden = v!=='rework'; $('#qc-replace-f').hidden = v!=='scrap' },
   orderFilter(v){ S.orderFilter = v; render() },
+  kbFilter(v){ S.kbFilter = v; render() },
+  kbAll(v){ S.kbAll = v==='1'; render() },
   dashRange(v){ S.dashRange = parseInt(v); render() },
   setTab(v){ S.setTab = v; render() }
 };
