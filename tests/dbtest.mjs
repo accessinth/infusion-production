@@ -39,7 +39,7 @@ console.log('โหมดสิทธิ์:', EXPOSE ? 'expose new tables = เ
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 try { await db.exec(schema); ok('รันไฟล์ SQL ครั้งแรก', true); } catch (e) { console.log('SCHEMA ERROR:', e.message, '| where:', e.where, '| pos:', e.position); process.exit(1); }
 try { await db.exec(schema); ok('รันไฟล์ SQL ซ้ำได้โดยไม่ error', true); } catch (e) { ok('รันไฟล์ SQL ซ้ำได้โดยไม่ error', false, e.message); }
-ok('ข้อมูลเริ่มต้น: วัสดุ 13 รายการ ไม่ซ้ำ', (await q('select count(*)::int n from materials'))[0].n === 13);
+ok('ข้อมูลเริ่มต้น: วัสดุ 19 รายการ ไม่ซ้ำ (รวมวัสดุงานเรือ 6 รายการ)', (await q('select count(*)::int n from materials'))[0].n === 19);
 ok('ข้อมูลเริ่มต้น: ผู้บริหาร 1 คน ไม่ซ้ำ', (await q("select count(*)::int n from workers where role='manager'"))[0].n === 1);
 
 // ---- ผู้ใช้ 2 บัญชี ----
@@ -54,7 +54,7 @@ const mgrWorker = (await q("select id from workers where role='manager'"))[0].id
 
 // ---- แท็บเล็ต (station) ----
 await as('authenticated', stationId);
-ok('แท็บเล็ตอ่านวัสดุได้', (await q('select count(*)::int n from materials'))[0].n === 13);
+ok('แท็บเล็ตอ่านวัสดุได้', (await q('select count(*)::int n from materials'))[0].n === 19);
 ok('แท็บเล็ตอ่านตาราง workers ตรงไม่ได้ (ซ่อนค่าแรง/PIN)', (await q('select count(*)::int n from workers'))[0].n === 0);
 const wp = await q('select * from workers_public');
 ok('แท็บเล็ตเห็นรายชื่อผ่าน workers_public โดยไม่มีค่าแรงและ PIN', wp.length === 1 && !('hourly_rate' in wp[0]) && !('pin_hash' in wp[0]), Object.keys(wp[0]).join(','));
@@ -100,8 +100,26 @@ await expectErr('กันสถานะที่ไม่ถูกต้อง
 await expectErr('กันเลขออเดอร์ซ้ำ', () => q("insert into orders (order_no) values ('IF2611-001')"), /duplicate|unique/);
 await q("insert into step_logs (piece_id, step, worker_id) values ($1,'S2',$2)", [pid, w.id]);
 await expectErr('กันแท็บเล็ต 2 เครื่องกดเริ่มชิ้นเดียวกันพร้อมกัน', () => q("insert into step_logs (piece_id, step, worker_id) values ($1,'S2',$2)", [pid, w.id]), /one_active_step_per_piece/);
+// งานเรือ: เส้นทางใหม่ + ขั้นประกบ + ขั้นใหม่
+const bProd = (await q("select id from products limit 1"))[0].id;
+await as('authenticated', mgrId);
+await q("update products set default_route='JB', has_join=true where id=$1", [bProd]);
+ok('ผู้บริหารตั้งสินค้าเป็นเส้นทางเรือ JB + มีประกบได้', (await q('select default_route, has_join from products where id=$1', [bProd]))[0].has_join === true);
+await as('authenticated', stationId);
+const boid = randomUUID(), biid = randomUUID(), bpid = randomUUID();
+await q("insert into orders (id, order_no) values ($1,'IF2611-B01')", [boid]);
+await q("insert into order_items (id, order_id, product_id, qty, route, has_join) values ($1,$2,$3,1,'CF',true)", [biid, boid, bProd]);
+await q("insert into pieces (id, code, order_id, order_item_id, product_id, route, has_join, seq) values ($1,'IF2611-B01-01',$2,$3,$4,'CF',true,1)", [bpid, boid, biid, bProd]);
+await q("insert into step_logs (piece_id, step, worker_id, status, finished_at) values ($1,'R0',$2,'done',now()),($1,'CF1',$2,'done',now()),($1,'WR',$2,'done',now())", [bpid, w.id]);
+ok('แท็บเล็ตรับออเดอร์เรือ Carbon มีประกบ และบันทึกขั้นงานเรือได้', (await q("select count(*)::int n from step_logs where piece_id=$1", [bpid]))[0].n === 3);
+await expectErr('กันเส้นทางที่ไม่มีอยู่', () => q("insert into pieces (code, order_id, order_item_id, product_id, route, seq) values ('X-1',$1,$2,$3,'ZZ',2)", [boid, biid, bProd]), /pieces_route_check/);
+await as('authenticated', mgrId);
+await q("insert into materials (code,name,category,unit) values ('CF-T700','ผ้าคาร์บอน T700','carbon','m')");
+ok('เพิ่มวัสดุหมวดใหม่ (ผ้าคาร์บอน) ได้', (await q("select category from materials where code='CF-T700'"))[0].category === 'carbon');
+await expectErr('กันหมวดวัสดุที่ไม่มีอยู่', () => q("insert into materials (code,name,category,unit) values ('X2','x','glue','kg')"), /materials_category_check/);
+await as('authenticated', stationId);
 const del = await db.query('delete from orders where id=$1', [oid]);
-ok('แท็บเล็ตลบออเดอร์ไม่ได้', del.affectedRows === 0 && (await q('select count(*)::int n from orders'))[0].n === 1);
+ok('แท็บเล็ตลบออเดอร์ไม่ได้', del.affectedRows === 0 && (await q('select count(*)::int n from orders'))[0].n === 2);
 await q("insert into storage.objects (bucket_id, name) values ('qc-photos','2026-11/x.jpg')");
 ok('แท็บเล็ตลิสต์ไฟล์รูปทั้งหมดไม่ได้ (เปิดผ่านลิงก์เท่านั้น)', (await q("select count(*)::int n from storage.objects where bucket_id='qc-photos'"))[0].n === 0);
 await db.exec('reset role');
@@ -120,6 +138,27 @@ await expectErr('คนนอกอ่านรายชื่อช่างไ
 await expectErr('คนนอกเดา PIN ไม่ได้', () => q('select verify_pin($1,$2)', [mgrWorker, '1234']), /permission denied/);
 
 await db.exec('reset role');
+
+// ---- อัปเกรดฐานข้อมูลที่สร้างจาก schema รุ่นก่อน (แบบโปรเจกต์จริง) ----
+{
+  const prevPath = new URL('./schema_prev.sql.tmp', import.meta.url);
+  let prev = null; try { prev = readFileSync(prevPath, 'utf8'); } catch (e) {}
+  if (prev && prev.includes("route in ('A','B')")) {
+    const up = new PGlite({ extensions: { pgcrypto } });
+    await up.exec(`create role anon nologin; create role authenticated nologin; create schema auth; create table auth.users (id uuid primary key, email text);
+      create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$; create schema extensions; create schema storage;
+      create table storage.buckets (id text primary key, name text, public boolean); create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);`);
+    await up.exec(prev);
+    const pr = (await up.query("insert into products (code,name,default_route) values ('OLD','สินค้าเดิม','B') returning id")).rows[0].id;
+    try { await up.exec(schema); ok('อัปเกรด: รันไฟล์ใหม่ทับฐานข้อมูลรุ่นก่อนได้', true); } catch (e) { ok('อัปเกรด: รันไฟล์ใหม่ทับฐานข้อมูลรุ่นก่อนได้', false, e.message); }
+    const r = (await up.query('select default_route, has_join from products where id=$1', [pr])).rows[0];
+    ok('อัปเกรด: ข้อมูลเดิมอยู่ครบ และได้ has_join = false', r.default_route === 'B' && r.has_join === false, JSON.stringify(r));
+    await up.query("update products set default_route='CP' where id=$1", [pr]);
+    ok('อัปเกรด: ใช้เส้นทางเรือได้หลังอัปเกรด', (await up.query('select default_route from products where id=$1', [pr])).rows[0].default_route === 'CP');
+    await up.close();
+  } else ok('อัปเกรด: (ข้ามเพราะไม่มีไฟล์ schema รุ่นก่อน)', true);
+}
+
 for (const r of R) console.log(r.join('\t'));
 console.log('TOTAL', R.filter(r => r[0] === 'PASS').length, '/', R.length);
 process.exit(R.every(r => r[0] === 'PASS') ? 0 : 1);

@@ -71,7 +71,7 @@ create table if not exists public.materials (
   id            uuid primary key default gen_random_uuid(),
   code          text unique not null,
   name          text not null,
-  category      text not null check (category in ('gelcoat','fiber','resin','polish','other')),
+  category      text not null check (category in ('gelcoat','fiber','resin','polish','release','carbon','putty','paint','other')),
   unit          text not null check (unit in ('kg','m','pcs')),   -- kg ป้อนเป็นกรัมได้ในแอป
   unit_cost     numeric(12,2) not null default 0,                 -- บาท/หน่วย
   reorder_level numeric(12,3) not null default 0,
@@ -87,7 +87,7 @@ create table if not exists public.products (
   code          text unique not null,
   name          text not null,
   category      text,
-  default_route text not null default 'A' check (default_route in ('A','B')),  -- A = เก็บผิว, B = พ่นเรซินเจลโค้ตเพิ่ม
+  default_route text not null default 'A' check (default_route in ('A','B','JB','JW','CP','CF')),  -- ดูคำอธิบายเส้นทางในส่วน "งานเรือ"
   standard      jsonb not null default '{}',
   active        boolean not null default true,
   created_at    timestamptz not null default now()
@@ -117,7 +117,7 @@ create table if not exists public.order_items (
   order_id   uuid not null references public.orders on delete cascade,
   product_id uuid not null references public.products,
   qty        int  not null check (qty > 0),
-  route      text not null check (route in ('A','B')),
+  route      text not null check (route in ('A','B','JB','JW','CP','CF')),
   created_at timestamptz not null default now()
 );
 
@@ -127,7 +127,7 @@ create table if not exists public.pieces (
   order_id      uuid not null references public.orders on delete cascade,
   order_item_id uuid not null references public.order_items on delete cascade,
   product_id    uuid not null references public.products,
-  route         text not null check (route in ('A','B')),
+  route         text not null check (route in ('A','B','JB','JW','CP','CF')),
   seq           int  not null,
   scrapped      boolean not null default false,
   scrap_reason  text,
@@ -136,10 +136,31 @@ create table if not exists public.pieces (
 );
 
 -- ---------------------------------------------------------------------
+-- งานเรือ (12 พ.ย. 2026) · ฐานข้อมูลที่สร้างจาก schema เดิมได้รับการแก้ตรงนี้เมื่อรันไฟล์ซ้ำ
+--   เส้นทาง: A เก็บผิว | B พ่นเรซินเจลโค้ตเพิ่ม | JB เรือ JelCode ดำ | JW เรือ JelCode ขาว |
+--           CP เรือ สีตามลูกค้าสั่ง | CF เรือ Carbon
+--   has_join = ชิ้นงานมีขั้นประกบ (ค่าเริ่มต้นจากสินค้า → รายการในออเดอร์ → ชิ้นงาน)
+-- ---------------------------------------------------------------------
+alter table public.products    add column if not exists has_join boolean not null default false;
+alter table public.order_items add column if not exists has_join boolean not null default false;
+alter table public.pieces      add column if not exists has_join boolean not null default false;
+
+alter table public.products    drop constraint if exists products_default_route_check;
+alter table public.products    add  constraint products_default_route_check check (default_route in ('A','B','JB','JW','CP','CF'));
+alter table public.order_items drop constraint if exists order_items_route_check;
+alter table public.order_items add  constraint order_items_route_check check (route in ('A','B','JB','JW','CP','CF'));
+alter table public.pieces      drop constraint if exists pieces_route_check;
+alter table public.pieces      add  constraint pieces_route_check check (route in ('A','B','JB','JW','CP','CF'));
+alter table public.materials   drop constraint if exists materials_category_check;
+alter table public.materials   add  constraint materials_category_check check (category in ('gelcoat','fiber','resin','polish','release','carbon','putty','paint','other'));
+
+-- ---------------------------------------------------------------------
 -- บันทึกการทำงานแต่ละขั้นตอน
 -- step: S1 เจลโค้ต | S2 ปูใยแก้ว | S3 อินฟิวชั่น | S4 เจียรตัดแต่ง |
---       S5 เก็บผิว (เส้นทาง A) | S5_1 พ่นเรซินเจลโค้ต, S5_2 ขัดเก็บผิว (เส้นทาง B) |
+--       S5 เก็บผิว (เส้นทาง A) | S5_1 พ่นเรซินเจลโค้ต, S5_2 ขัดเก็บผิว (เส้นทาง B และงานเรือ) |
 --       S6 ขัดเงา | S7 ล้าง เตรียมส่ง
+--       งานเรือ: R0 ทาน้ำยาถอดแบบ | CF1 ปูผ้า Carbon Prepreg | CF2 เข้าตู้อบ | DM แกะออกจากแม่พิมพ์ |
+--       JN ประกบชิ้นงาน | PT โป๊ว | PR สีพื้น | PC สีตามลูกค้า | LQ แล็คเกอร์ | WR ห่องานพร้อมส่ง
 -- materials: [{"material_id":"…","qty":1.25,"layer":1}]  (qty เป็นหน่วยหลักของวัสดุ)
 -- status: in_progress | done | cancelled (กดผิด ไม่นับ) | reworked (ถูกสั่งแก้ นับเป็นต้นทุน)
 -- ---------------------------------------------------------------------
@@ -336,7 +357,13 @@ insert into public.materials (code, name, category, unit, unit_cost, reorder_lev
   ('RS-GC',    'เรซินเจลโค้ต',          'resin',   'kg', 0, 20),
   ('CAT-MEKP', 'ตัวเร่ง (MEKP)',        'other',   'kg', 0, 2),
   ('PL-C',     'ยาขัด หยาบ',           'polish',  'kg', 0, 2),
-  ('PL-F',     'ยาขัด ละเอียด (ลบขนแมว)','polish',  'kg', 0, 2)
+  ('PL-F',     'ยาขัด ละเอียด (ลบขนแมว)','polish',  'kg', 0, 2),
+  ('RL-WAX',   'น้ำยาถอดแบบ (แว็กซ์)',   'release', 'kg', 0, 1),
+  ('CF-PP',    'ผ้าคาร์บอน Prepreg',     'carbon',  'm',  0, 10),
+  ('PT-CAR',   'สีโป๊วรถยนต์',           'putty',   'kg', 0, 2),
+  ('PA-PRM',   'สีพื้นรถยนต์',           'paint',   'kg', 0, 2),
+  ('PA-CLR',   'สีพ่นตามลูกค้าสั่ง',      'paint',   'kg', 0, 1),
+  ('PA-LQ',    'แล็คเกอร์',             'paint',   'kg', 0, 2)
 on conflict (code) do nothing;
 
 -- ผู้บริหารคนแรก PIN 1234 (เปลี่ยนในแอป → ตั้งค่า → ช่าง)

@@ -365,7 +365,7 @@ with sync_playwright() as p:
     E(f"openSheet(shPiece,'{dp}')"); pg.click('[data-act="startStep"]'); pg.wait_for_timeout(300)
     dlid = E(f"M.state['{dp}'].log.id")
     pg.locator('.mat-editor[data-key="log"] .m-qty').first.fill('7.25'); pg.fill('#logNote', 'ร่างทดสอบ')
-    pg.reload(wait_until='domcontentloaded'); pg.wait_for_selector('.stepbtn'); E(AW)
+    pg.reload(wait_until='domcontentloaded'); pg.wait_for_selector('.stepbtn'); E("window.__aw = askWorker; 0"); E(AW)
     E(f"openSheet(shPiece,'{dp}')")
     check('รีเฟรชระหว่างกรอก → ตัวเลขและหมายเหตุที่พิมพ์ค้างไว้กลับมา', pg.locator('.mat-editor[data-key="log"] .m-qty').first.input_value() == '7.25'
           and pg.input_value('#logNote') == 'ร่างทดสอบ' and pg.locator('[data-draft] .chip.info').count() == 1)
@@ -386,6 +386,62 @@ with sync_playwright() as p:
     check('ตีชิ้นงานเสียขณะมีคนกำลังทำ → ไม่มีงานค้าง "กำลังทำ"', E(f"S.data.step_logs.filter(l => l.piece_id==='{xp}' && l.status==='in_progress').length") == 0)
     E("askWorker = window.__aw; S.session=null; S.view='floor'; closeSheet(); render(); 0")
 
+    # ---------- งานเรือ 4 แบบ (ขั้นตอนการผลิตเรือ) ----------
+    E("setLang('th'); S.session=null; S.view='floor'; closeSheet(); render()")
+    rd = E("Object.fromEntries(['JB','JW','CP','CF'].map(r => [r, routeSteps(r, true).map(k => STEPS[k].name)]))")
+    check('JelCode ดำ/ขาว 12 ขั้น ตามลำดับ (QC ไม่นับเป็นขั้น)', rd['JB'] == rd['JW'] == ['ทาน้ำยาถอดแบบ','พ่นเจลโค้ต','ปูใยแก้ว','อินฟิวชั่น','แกะออกจากแม่พิมพ์','เจียรตัดแต่ง','ประกบชิ้นงาน','พ่นเรซินเจลโค้ต','ขัดเก็บผิว','ขัดเงา','ล้าง เตรียมส่ง','ห่องานพร้อมส่ง'], ' → '.join(rd['JB']))
+    check('สีตามลูกค้า: โป๊ว → ขัด → สีพื้น → สีลูกค้า → แล็คเกอร์ → ขัดเงา → ห่อ', rd['CP'][6:] == ['ประกบชิ้นงาน','โป๊วเก็บงาน','ขัดเก็บผิว','พ่นสีพื้น','พ่นสีตามลูกค้าสั่ง','พ่นเคลือบแล็คเกอร์','ขัดเงา','ห่องานพร้อมส่ง'], ' → '.join(rd['CP']))
+    check('Carbon: ปูผ้า Prepreg → เข้าตู้อบ → แกะ (ไม่มีพ่นเจล/อินฟิวชั่น)', rd['CF'][:4] == ['ทาน้ำยาถอดแบบ','ปูผ้า Carbon Prepreg','เข้าตู้อบ','แกะออกจากแม่พิมพ์'] and 'อินฟิวชั่น' not in rd['CF'], ' → '.join(rd['CF']))
+    check('เลขข้อตามเส้นทาง: ประกบ = ข้อ 7 (JelCode) / ข้อ 6 (Carbon) · ไม่มีประกบ = ข้ามและไม่นับเลข',
+          E("[stepNo('JN',{route:'JB',has_join:true}), stepNo('JN',{route:'CF',has_join:true}), stepNo('JN',{route:'JB',has_join:false}), stepNo('S7',{route:'JB',has_join:false}), stepNo('S5_1',{route:'B'})]") == ['7','6','','10','5.1'])
+    # รับออเดอร์งานเรือ: เลือกสินค้าที่มีประกบ → เส้นทาง JB + ติ๊กประกบให้เอง
+    E("startSession(S.data.workers.find(w => w.role==='manager')); S.view='orders'; render()")
+    pg.click('[data-act="newOrder"]'); pg.wait_for_selector('#o-no')
+    pg.fill('#o-cust', 'อู่เรือทดสอบ')
+    ws = E("S.data.products.find(p => p.code==='B-WS-BK').id")
+    pg.locator('#o-items .i-prod').first.select_option(ws)
+    r1, j1, jv = pg.locator('#o-items .i-route').first.input_value(), pg.locator('#o-items .i-join').first.is_checked(), pg.locator('#o-items .join-f').first.is_visible()
+    pg.locator('#o-items .i-qty').first.fill('2')
+    pg.click('[data-act="addItemRow"]')
+    pg.locator('#o-items .i-prod').last.select_option(E("S.data.products.find(p => p.code==='B-TOP-CF').id"))
+    pg.locator('#o-items .i-qty').last.fill('1')
+    pg.locator('#o-items .i-join').last.check()
+    pg.click('[data-act="saveOrder"]'); pg.wait_for_timeout(300)
+    bp = E("S.data.pieces.slice(-3).map(p => [p.route, p.has_join, M.state[p.id].status, M.state[p.id].step])")
+    check('เลือกสินค้าเรือ → เส้นทาง JB และติ๊ก "มีประกบ" ให้ตามสินค้า', r1 == 'JB' and j1 and jv, f'{r1} {j1} {jv}')
+    check('ออเดอร์เรือ → ชิ้นงานเริ่มที่ "ทาน้ำยาถอดแบบ" และจำค่าประกบรายชิ้น', bp == [['JB', True, 'waiting', 'R0'], ['JB', True, 'waiting', 'R0'], ['CF', True, 'waiting', 'R0']], json.dumps(bp, ensure_ascii=False))
+    pg.click('.sheet-head [data-act="closeSheet"]')
+    # QC ขั้นสุดท้ายต้องผ่านก่อนห่องาน
+    gp = E("S.data.pieces[S.data.pieces.length-3].id")
+    E(f"""(() => {{ const p = M.piece['{gp}'], w = S.data.workers[0].id, st = pieceSteps(p), fin = routeDef(p.route).qcFinal; let t = Date.now() - 8*3600e3;
+        for(const k of st.slice(0, st.indexOf(fin) + 1)){{ S.data.step_logs.push({{id:uid(), piece_id:p.id, step:k, worker_id:w, finished_by:w, started_at:new Date(t).toISOString(), finished_at:new Date(t+600e3).toISOString(), passes:null, materials:[], note:null, photo_url:null, status:'done', created_at:new Date(t).toISOString()}}); t += 700e3 }}
+        demoSave(); reindex(); render() }})()""")
+    g1 = E(f"[M.state['{gp}'].status, M.state['{gp}'].step]")
+    check('ล้างเสร็จแต่ยังไม่ผ่าน QC → ยังห่องานไม่ได้ (รอ QC)', g1 == ['qc', 'S7'] and E(f"qcPending().some(x => x.piece.id==='{gp}' && x.kind==='final')"), str(g1))
+    E(f"openSheet(shPiece,'{gp}')")
+    check('ใบงานบอกว่าต้องผ่าน QC ก่อนห่องาน', 'ผ่าน QC แล้วจึงห่องานได้' in pg.locator('#sheetBody').inner_text())
+    pg.click('#sheetBody [data-act="openQC"]'); pg.wait_for_selector('#qc-point')
+    check('เปิด QC จากใบงาน → เลือกจุด "ขั้นสุดท้ายก่อนส่ง" ให้เอง', pg.locator('#qc-point').input_value() == 'S7' and 'ขั้นสุดท้ายก่อนส่ง' in pg.locator('#qc-point option:checked').inner_text())
+    pg.click('[data-act="saveQC"]')
+    if pg.locator('#modal:not([hidden])').count(): pin('ประเสริฐ')
+    pg.wait_for_timeout(300)
+    g2 = E(f"[M.state['{gp}'].status, M.state['{gp}'].step, stepLabel(M.state['{gp}'].step, M.piece['{gp}'])]")
+    check('ผ่าน QC → ขั้นถัดไปคือ "12 ห่องานพร้อมส่ง"', g2 == ['waiting', 'WR', '12 ห่องานพร้อมส่ง'], str(g2))
+    E(f"S.session=null; openSheet(shPiece,'{gp}')"); pg.click('[data-act="startStep"]'); pin('สุดา')
+    pg.click('[data-act="finishStep"]'); pin('สุดา')
+    check('ห่องานเสร็จ → พร้อมส่ง', E(f"M.state['{gp}'].status") == 'done')
+    # หน้างาน: ปุ่มจุดงานเรือ + ป้าย "เฉพาะงานเรือ"
+    E("closeSheet(); S.view='floor'; render()")
+    check('หน้างานมีจุดงานเรือ (ทาน้ำยาถอดแบบ, แกะแม่พิมพ์, ห่องาน) พร้อมป้ายเฉพาะงานเรือ',
+          all(pg.locator(f'.stepbtn[data-v="{k}"]').count() == 1 for k in ['R0','DM','WR']) and 'เฉพาะงานเรือ' in pg.locator('.stepbtn[data-v="R0"]').inner_text())
+    # สูตรมาตรฐานสินค้าเรือ: แสดงเฉพาะขั้นของเส้นทาง · เปลี่ยนเส้นทางแล้วช่องเปลี่ยนตาม
+    E("S.session={worker:S.data.workers.find(w=>w.role==='manager'),until:Date.now()+9e6}; S.view='settings'; S.setTab='products'; render()")
+    E("openSheet(shProductForm, S.data.products.find(p => p.code==='B-TOP-CF').id)")
+    vis = lambda: E("[...document.querySelectorAll('.std-step')].filter(e => !e.hidden).map(e => e.dataset.stdStep)")
+    v1 = vis(); pg.select_option('#p-route', 'CP'); v2 = vis(); pg.check('#p-join'); v3 = vis()
+    check('สูตรมาตรฐาน: เห็นเฉพาะขั้นของเส้นทาง Carbon → เปลี่ยนเป็นสีตามลูกค้า → ติ๊กประกบ', 'CF1' in v1 and 'S1' not in v1 and 'PC' in v2 and 'CF1' not in v2 and 'JN' not in v2 and 'JN' in v3, f'{len(v1)}/{len(v2)}/{len(v3)}')
+    E("closeSheet(); S.session=null; S.view='floor'; render()")
+
     # ---------- ขนาดจอ / ล้นจอ ----------
     def overflow(): return E("document.documentElement.scrollWidth - document.documentElement.clientWidth")
     for vw, vh, tag in [(1024,768,'tablet-land'), (768,1024,'tablet-port'), (390,844,'phone')]:
@@ -400,9 +456,12 @@ with sync_playwright() as p:
         E("S.view='settings'; S.setTab='products'; render(); openSheet(shProductForm, S.data.products[0].id)"); pg.wait_for_timeout(100)
         o4 = E("document.querySelector('.sheet-panel').scrollWidth - document.querySelector('.sheet-panel').clientWidth")
         if tag == 'phone': pg.screenshot(path=f'{SHOTS}/08_phone_product.png')
+        E("closeSheet(); openSheet(shOrderForm); const s = document.querySelector('.i-prod'); s.value = S.data.products.find(p => p.code==='B-WS-BK').id; s.dispatchEvent(new Event('change', {bubbles:true}))"); pg.wait_for_timeout(100)
+        o5 = E("document.querySelector('.sheet-panel').scrollWidth - document.querySelector('.sheet-panel').clientWidth")
+        if tag == 'phone': pg.screenshot(path=f'{SHOTS}/11_phone_boat_order.png')
         E("closeSheet(); S.view='floor'; render()")
         if tag == 'phone': pg.screenshot(path=f'{SHOTS}/09_phone_floor.png')
-        check(f'ไม่ล้นจอแนวนอน ({tag} {vw}px)', max(o1,o2,o3,o4) <= 0, f'หน้างาน {o1} ใบงาน {o2} dashboard {o3} สูตร {o4}')
+        check(f'ไม่ล้นจอแนวนอน ({tag} {vw}px)', max(o1,o2,o3,o4,o5) <= 0, f'หน้างาน {o1} ใบงาน {o2} dashboard {o3} สูตร {o4} ออเดอร์เรือ {o5}')
     pg.set_viewport_size({'width':1024,'height':768})
     pg.emulate_media(color_scheme='dark'); E("S.view='floor'; render()"); pg.wait_for_timeout(150)
     pg.screenshot(path=f'{SHOTS}/10_dark_floor.png')

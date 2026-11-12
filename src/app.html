@@ -235,6 +235,8 @@ textarea.input{min-height:76px;resize:vertical}
 .layer-no::after{content:counter(layer)}
 .mrow select,.mrow input,.irow select,.irow input{min-height:48px;border:1px solid var(--line-2);border-radius:9px;padding:6px 10px;background:var(--surface);width:100%;min-width:0}
 .irow{grid-template-columns:minmax(0,1fr) 96px minmax(0,190px) 44px}
+.irow .join-f{grid-column:1/-1;justify-self:start;min-height:44px}
+.irow .join-f input{min-height:0}
 @media (max-width:520px){
   .mrow{grid-template-columns:minmax(0,1fr) 84px 72px 44px}
   .mat-editor.layers .mrow{grid-template-columns:minmax(0,1fr) 84px 72px 44px}
@@ -312,27 +314,52 @@ const CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_NlFEnUTdlhGRstBaNFzdWg_xn4aVcCt"   // Publishable key · ใส่ในหน้าเว็บได้ ข้อมูลป้องกันด้วย RLS
 };
 
-/* ---------- ค่าคงที่ของกระบวนการ ---------- */
+/* ---------- ค่าคงที่ของกระบวนการ ----------
+   no = เลขข้อของเส้นทาง A/B เดิม · เส้นทางงานเรือนับเลขข้อตามลำดับในเส้นทางของชิ้นนั้น (stepNo)
+   ขั้นที่ใช้ร่วมกันระหว่างงานรถและงานเรือใช้รหัสเดิม เพื่อให้มาตรฐานและประวัติที่บันทึกไว้ใช้ต่อได้ */
 const STEPS = {
+  R0:  {name:'ทาน้ำยาถอดแบบ',       hint:'ทาให้ทั่วแม่พิมพ์ก่อนเริ่มงาน', cats:['release','other']},
   S1:  {no:'1',   name:'พ่นเจลโค้ต',        hint:'พ่น 2 เที่ยวให้สีสม่ำเสมอ', passes:[1,2,3], defPass:2, cats:['gelcoat','other']},
   S2:  {no:'2',   name:'ปูใยแก้ว',          hint:'ระบุชนิด เบอร์ และจำนวนเมตร แยกทีละชั้น', layers:true, cats:['fiber']},
+  CF1: {name:'ปูผ้า Carbon Prepreg', hint:'ตามน้ำหนักและความหนาที่กำหนด ระบุทีละชั้น', layers:true, cats:['carbon']},
   S3:  {no:'3',   name:'อินฟิวชั่น',         hint:'ดึงน้ำยาเรซินเข้าแม่พิมพ์', cats:['resin','other']},
+  CF2: {name:'เข้าตู้อบ',            hint:'อบตามอุณหภูมิและเวลาที่กำหนด', cats:['other']},
+  DM:  {name:'แกะออกจากแม่พิมพ์',     hint:'รอแห้งเซ็ตตัวก่อน แล้วจึงแกะ', cats:['other']},
   S4:  {no:'4',   name:'เจียรตัดแต่ง',       hint:'ตัดแต่งให้ได้รูปทรงที่ถูกต้อง', cats:['other']},
-  S5:  {no:'5',   name:'เก็บผิวงาน',         hint:'ขัดหยาบจนถึงละเอียด', route:'A', cats:['other']},
-  S5_1:{no:'5.1', name:'พ่นเรซินเจลโค้ต',    hint:'1–3 เที่ยว', passes:[1,2,3], defPass:2, route:'B', cats:['resin','gelcoat','other']},
-  S5_2:{no:'5.2', name:'ขัดเก็บผิว',         hint:'หลังพ่นเรซินเจลโค้ต ขัดหยาบจนถึงละเอียด', route:'B', cats:['other']},
+  JN:  {name:'ประกบชิ้นงาน',         hint:'ประกบหรือต่อชิ้นงานตามแบบ', cats:['resin','fiber','putty','other']},
+  S5:  {no:'5',   name:'เก็บผิวงาน',         hint:'ขัดหยาบจนถึงละเอียด', cats:['other']},
+  S5_1:{no:'5.1', name:'พ่นเรซินเจลโค้ต',    hint:'สร้างความหนา 1–3 เที่ยว', passes:[1,2,3], defPass:2, cats:['resin','gelcoat','other']},
+  PT:  {name:'โป๊วเก็บงาน',           hint:'ใช้สีโป๊วรถยนต์ เก็บรอยให้เรียบ', cats:['putty','other']},
+  S5_2:{no:'5.2', name:'ขัดเก็บผิว',         hint:'ขัดกระดาษทรายปรับผิวให้เรียบสม่ำเสมอ', cats:['other']},
+  PR:  {name:'พ่นสีพื้น',             hint:'พ่นสีพื้นรถยนต์ให้ทั่ว', cats:['paint','other']},
+  PC:  {name:'พ่นสีตามลูกค้าสั่ง',      hint:'ตรวจรหัสสีกับใบสั่งก่อนพ่น', passes:[1,2,3], defPass:2, cats:['paint','other']},
+  LQ:  {name:'พ่นเคลือบแล็คเกอร์',     hint:'พ่นเคลือบให้ทั่วและสม่ำเสมอ', cats:['paint','other']},
   S6:  {no:'6',   name:'ขัดเงา',            hint:'ลงยาขัด ลบรอยเสี้ยนจนถึงรอยขนแมว', cats:['polish']},
-  S7:  {no:'7',   name:'ล้าง เตรียมส่ง',      hint:'ทำความสะอาดชิ้นงาน', cats:['other']}
+  S7:  {no:'7',   name:'ล้าง เตรียมส่ง',      hint:'ล้างคราบ ทำความสะอาดชิ้นงาน', cats:['other']},
+  WR:  {name:'ห่องานพร้อมส่ง',        hint:'ห่อหลังผ่าน QC ขั้นสุดท้าย', cats:['other']}
 };
-const STEP_ORDER = ['S1','S2','S3','S4','S5','S5_1','S5_2','S6','S7'];
-const ROUTES = {A:['S1','S2','S3','S4','S5','S6','S7'], B:['S1','S2','S3','S4','S5_1','S5_2','S6','S7']};
-const ROUTE_NAME = {A:'เก็บผิว', B:'พ่นเรซินเจลโค้ตเพิ่ม'};
-const QC_POINTS = ['S3','S7'];
-const QC_POINT_NAME = {S3:'หลังอินฟิวชั่น (ถอดแม่พิมพ์)', S7:'ขั้นสุดท้ายก่อนส่ง'};
+const STEP_ORDER = ['R0','S1','S2','CF1','S3','CF2','DM','S4','JN','S5','S5_1','PT','S5_2','PR','PC','LQ','S6','S7','WR'];
+/* เส้นทาง: steps = ลำดับขั้น · qcMid = จุด QC ระหว่างทาง (ไม่บังคับ) · qcFinal = QC ที่ต้องผ่าน
+   ขั้นที่อยู่หลัง qcFinal (ห่องาน) เริ่มได้เมื่อผ่าน QC แล้วเท่านั้น · JN (ประกบ) มีเฉพาะชิ้นที่ has_join */
+const BOAT_JEL = ['R0','S1','S2','S3','DM','S4','JN','S5_1','S5_2','S6','S7','WR'];
+const ROUTE_DEF = {
+  A:  {steps:['S1','S2','S3','S4','S5','S6','S7'],          qcMid:'S3', qcFinal:'S7'},
+  B:  {steps:['S1','S2','S3','S4','S5_1','S5_2','S6','S7'], qcMid:'S3', qcFinal:'S7'},
+  JB: {steps:BOAT_JEL, qcMid:'DM', qcFinal:'S7', boat:true},
+  JW: {steps:BOAT_JEL, qcMid:'DM', qcFinal:'S7', boat:true},
+  CP: {steps:['R0','S1','S2','S3','DM','S4','JN','PT','S5_2','PR','PC','LQ','S6','WR'], qcMid:'DM', qcFinal:'S6', boat:true},
+  CF: {steps:['R0','CF1','CF2','DM','S4','JN','S5_1','S5_2','S6','S7','WR'], qcMid:'DM', qcFinal:'S7', boat:true}
+};
+const ROUTE_KEYS = Object.keys(ROUTE_DEF);
+const ROUTES = Object.fromEntries(ROUTE_KEYS.map(r => [r, ROUTE_DEF[r].steps]));
+const routeDef = r => ROUTE_DEF[r] || ROUTE_DEF.A;
+const routeSteps = (r, join) => routeDef(r).steps.filter(s => s!=='JN' || join);
+const pieceSteps = p => routeSteps(p.route, p.has_join);
+const FIRST_STEPS = new Set(ROUTE_KEYS.map(r => ROUTE_DEF[r].steps[0]));
 const DEFECTS = ['ฟองอากาศ','เจลโค้ตไม่สม่ำเสมอ','ใยแห้ง (dry spot)','เรซินไม่เต็ม','ขอบแตก/บิ่น','ขนาด/รูปทรงผิด','รอยขัด/ขนแมว','สิ่งปนเปื้อน','อื่นๆ'];
 const ROLE_RANK = {worker:1, supervisor:2, manager:3};
 const ROLE_NAME = {worker:'ช่าง', supervisor:'หัวหน้า/QC', manager:'ผู้บริหาร'};
-const CAT_NAME = {gelcoat:'เจลโค้ต', fiber:'ใยแก้ว', resin:'เรซิน', polish:'ยาขัด', other:'อื่นๆ'};
+const CAT_NAME = {gelcoat:'เจลโค้ต', fiber:'ใยแก้ว', resin:'เรซิน', polish:'ยาขัด', release:'น้ำยาถอดแบบ', carbon:'ผ้าคาร์บอน', putty:'สีโป๊ว', paint:'สี/แล็คเกอร์', other:'อื่นๆ'};
 const UNIT_NAME = {kg:'กก.', m:'ม.', pcs:'ชิ้น'};
 const TABLES = ['workers','materials','products','settings','orders','order_items','pieces','step_logs','qc_records','stock_receipts'];
 const TABS = [
@@ -392,21 +419,46 @@ const I18N = {
   'step.S5_2': ['ขัดเก็บผิว', 'ខាត់ក្រោយបាញ់', 'ဖျန်းပြီးပွတ်'],
   'step.S6':   ['ขัดเงา', 'ប៉ូលាភ្លឺ', 'အရောင်တင်'],
   'step.S7':   ['ล้าง เตรียมส่ง', 'លាង រៀបចំដឹក', 'ဆေးကြော ပို့ရန်ပြင်'],
+  'step.R0':   ['ทาน้ำยาถอดแบบ', 'លាបថ្នាំដោះពុម្ព', 'မှိုခွာဆေး လိမ်း'],
+  'step.CF1':  ['ปูผ้า Carbon Prepreg', 'ក្រាលក្រណាត់ Carbon Prepreg', 'Carbon Prepreg အထည်ခင်း'],
+  'step.CF2':  ['เข้าตู้อบ', 'ដាក់ចូលទូដុត', 'မီးဖိုထဲ ထည့်'],
+  'step.DM':   ['แกะออกจากแม่พิมพ์', 'ដោះចេញពីពុម្ព', 'မှိုမှ ဖြုတ်'],
+  'step.JN':   ['ประกบชิ้นงาน', 'ផ្គុំគ្រឿង', 'အစိတ်အပိုင်း တွဲဆက်'],
+  'step.PT':   ['โป๊วเก็บงาน', 'បិទស្នាមដោយថ្នាំបិទ', 'ပွတ်ဆေးဖြင့် ဖာ'],
+  'step.PR':   ['พ่นสีพื้น', 'បាញ់ថ្នាំពណ៌មូលដ្ឋាន', 'အခြေခံဆေး ဖျန်း'],
+  'step.PC':   ['พ่นสีตามลูกค้าสั่ง', 'បាញ់ពណ៌តាមអតិថិជន', 'ဖောက်သည်အရောင် ဖျန်း'],
+  'step.LQ':   ['พ่นเคลือบแล็คเกอร์', 'បាញ់ឡាក់', 'လက်ကာ ဖျန်း'],
+  'step.WR':   ['ห่องานพร้อมส่ง', 'វេចខ្ចប់ រួចដឹក', 'ပို့ရန် ထုပ်ပိုး'],
   'hint.S1':   ['พ่น 2 เที่ยวให้สีสม่ำเสมอ', 'បាញ់ 2 ជុំ ឲ្យពណ៌ស្មើគ្នា', 'အရောင်ညီအောင် 2 ကြိမ် ဖျန်းပါ'],
   'hint.S2':   ['ระบุชนิด เบอร์ และจำนวนเมตร แยกทีละชั้น', 'កត់ប្រភេទ លេខ និងចំនួនម៉ែត្រ ម្តងមួយស្រទាប់', 'အလွှာတစ်ခုချင်း အမျိုးအစား၊ နံပါတ်နှင့် မီတာ ရေးပါ'],
   'hint.S3':   ['ดึงน้ำยาเรซินเข้าแม่พิมพ์', 'បូមរ៉េស៊ីនចូលពុម្ព', 'ရက်ဇင်ကို မှိုထဲ စုပ်သွင်းပါ'],
   'hint.S4':   ['ตัดแต่งให้ได้รูปทรงที่ถูกต้อง', 'កាត់តម្រឹមឲ្យត្រូវរាង', 'ပုံသဏ္ဌာန် မှန်အောင် ဖြတ်ပြင်ပါ'],
   'hint.S5':   ['ขัดหยาบจนถึงละเอียด', 'ខាត់ពីគ្រើមទៅម៉ដ្ឋ', 'ကြမ်းမှ ချောအထိ ပွတ်ပါ'],
-  'hint.S5_1': ['1–3 เที่ยว', '1–3 ជុំ', '1–3 ကြိမ်'],
-  'hint.S5_2': ['หลังพ่นเรซินเจลโค้ต ขัดหยาบจนถึงละเอียด', 'ក្រោយបាញ់រ៉េស៊ីនជែល ខាត់ពីគ្រើមទៅម៉ដ្ឋ', 'ရက်ဇင်ဂျယ်လ်ဖျန်းပြီးနောက် ကြမ်းမှ ချောအထိ ပွတ်ပါ'],
+  'hint.S5_1': ['สร้างความหนา 1–3 เที่ยว', 'បង្កើតកម្រាស់ 1–3 ជុំ', 'အထူရအောင် 1–3 ကြိမ်'],
+  'hint.S5_2': ['ขัดกระดาษทรายปรับผิวให้เรียบสม่ำเสมอ', 'ខាត់ក្រដាសខាត់ ឲ្យផ្ទៃរលោងស្មើ', 'ကော်ပတ်စက္ကူဖြင့် မျက်နှာပြင် ညီညာချောမွေ့အောင် ပွတ်ပါ'],
   'hint.S6':   ['ลงยาขัด ลบรอยเสี้ยนจนถึงรอยขนแมว', 'ដាក់ថ្នាំប៉ូលា លុបស្នាមកោសរហូតដល់ស្នាមល្អិត', 'ပွတ်ဆေးသုံး၍ ခြစ်ရာမှ အစင်းသေးအထိ ဖယ်ပါ'],
-  'hint.S7':   ['ทำความสะอาดชิ้นงาน', 'សម្អាតគ្រឿង', 'ပစ္စည်းကို သန့်ရှင်းပါ'],
+  'hint.S7':   ['ล้างคราบ ทำความสะอาดชิ้นงาน', 'លាងស្នាមប្រឡាក់ សម្អាតគ្រឿង', 'အစွန်းအထင်း ဆေး၍ ပစ္စည်းကို သန့်ရှင်းပါ'],
+  'hint.R0':   ['ทาให้ทั่วแม่พิมพ์ก่อนเริ่มงาน', 'លាបឲ្យពេញពុម្ព មុនចាប់ផ្តើម', 'အလုပ်မစမီ မှိုတစ်ခုလုံး လိမ်းပါ'],
+  'hint.CF1':  ['ตามน้ำหนักและความหนาที่กำหนด ระบุทีละชั้น', 'តាមទម្ងន់ និងកម្រាស់ដែលកំណត់ កត់ម្តងមួយស្រទាប់', 'သတ်မှတ်အလေးချိန်နှင့် အထူအတိုင်း အလွှာတစ်ခုချင်း ရေးပါ'],
+  'hint.CF2':  ['อบตามอุณหภูมิและเวลาที่กำหนด', 'ដុតតាមសីតុណ្ហភាព និងពេលវេលាកំណត់', 'သတ်မှတ်အပူချိန်နှင့် အချိန်အတိုင်း ဖုတ်ပါ'],
+  'hint.DM':   ['รอแห้งเซ็ตตัวก่อน แล้วจึงแกะ', 'រង់ចាំឲ្យស្ងួតរឹងសិន ទើបដោះ', 'ခြောက်၍ ခိုင်ပြီးမှ ဖြုတ်ပါ'],
+  'hint.JN':   ['ประกบหรือต่อชิ้นงานตามแบบ', 'ផ្គុំ ឬភ្ជាប់គ្រឿងតាមប្លង់', 'ပုံစံအတိုင်း တွဲဆက်ပါ'],
+  'hint.PT':   ['ใช้สีโป๊วรถยนต์ เก็บรอยให้เรียบ', 'ប្រើថ្នាំបិទរថយន្ត បិទស្នាមឲ្យរលោង', 'ကားပွတ်ဆေးဖြင့် အရာများ ညီအောင် ဖာပါ'],
+  'hint.PR':   ['พ่นสีพื้นรถยนต์ให้ทั่ว', 'បាញ់ថ្នាំមូលដ្ឋានរថយន្តឲ្យពេញ', 'ကားအခြေခံဆေး တစ်ပြင်လုံး ဖျန်းပါ'],
+  'hint.PC':   ['ตรวจรหัสสีกับใบสั่งก่อนพ่น', 'ពិនិត្យលេខពណ៌ជាមួយប័ណ្ណបញ្ជា មុនបាញ់', 'မဖျန်းမီ အရောင်ကုဒ်ကို အော်ဒါနှင့် စစ်ပါ'],
+  'hint.LQ':   ['พ่นเคลือบให้ทั่วและสม่ำเสมอ', 'បាញ់ឲ្យពេញ និងស្មើ', 'တစ်ပြင်လုံး ညီညာအောင် ဖျန်းပါ'],
+  'hint.WR':   ['ห่อหลังผ่าน QC ขั้นสุดท้าย', 'វេចខ្ចប់ក្រោយឆ្លង QC ចុងក្រោយ', 'နောက်ဆုံး QC အောင်ပြီးမှ ထုပ်ပိုးပါ'],
   'route.A':        ['เก็บผิว', 'ខាត់ផ្ទៃ', 'မျက်နှာပြင်ပွတ်'],
   'route.B':        ['พ่นเรซินเจลโค้ตเพิ่ม', 'បាញ់ជែលបន្ថែម', 'ဂျယ်လ်ထပ်ဖျန်း'],
+  'route.JB':       ['เรือ JelCode ดำ', 'ទូក JelCode ខ្មៅ', 'လှေ JelCode အနက်'],
+  'route.JW':       ['เรือ JelCode ขาว', 'ទូក JelCode ស', 'လှေ JelCode အဖြူ'],
+  'route.CP':       ['เรือ สีตามลูกค้าสั่ง', 'ទូក ពណ៌តាមអតិថិជន', 'လှေ ဖောက်သည်အရောင်'],
+  'route.CF':       ['เรือ Carbon', 'ទូក Carbon', 'လှေ Carbon'],
   'routeLabel':     ['เส้นทาง {r}', 'ផ្លូវ {r}', 'လမ်းကြောင်း {r}'],
   'onlyRoute':      ['เฉพาะเส้นทาง {r}', 'សម្រាប់ផ្លូវ {r}', 'လမ်းကြောင်း {r} သာ'],
-  'qcpt.S3':        ['หลังอินฟิวชั่น (ถอดแม่พิมพ์)', 'ក្រោយអ៊ីនហ្វុយស៊ិន (ដោះពុម្ព)', 'အင်ဖျူးရှင်းပြီး (မှိုဖြုတ်ပြီး)'],
-  'qcpt.S7':        ['ขั้นสุดท้ายก่อนส่ง', 'ចុងក្រោយ មុនដឹក', 'မပို့မီ နောက်ဆုံးအဆင့်'],
+  'onlyBoat':       ['เฉพาะงานเรือ', 'សម្រាប់តែការងារទូក', 'လှေအလုပ်သာ'],
+  'qcpt.mid':       ['หลังถอดแม่พิมพ์', 'ក្រោយដោះពុម្ព', 'မှိုဖြုတ်ပြီး'],
+  'qcpt.final':     ['ขั้นสุดท้ายก่อนส่ง', 'ចុងក្រោយ មុនដឹក', 'မပို့မီ နောက်ဆုံးအဆင့်'],
   'defect.0': ['ฟองอากาศ', 'ពពុះខ្យល់', 'လေပူဖောင်း'],
   'defect.1': ['เจลโค้ตไม่สม่ำเสมอ', 'ជែលកូតមិនស្មើ', 'ဂျယ်လ်ကုတ် မညီ'],
   'defect.2': ['ใยแห้ง (dry spot)', 'សរសៃស្ងួត (dry spot)', 'ဖိုက်ဘာခြောက် (dry spot)'],
@@ -420,6 +472,10 @@ const I18N = {
   'cat.fiber':   ['ใยแก้ว', 'សរសៃកញ្ចក់', 'ဖိုက်ဘာဂလပ်စ်'],
   'cat.resin':   ['เรซิน', 'រ៉េស៊ីន', 'ရက်ဇင်'],
   'cat.polish':  ['ยาขัด', 'ថ្នាំប៉ូលា', 'ပွတ်ဆေး'],
+  'cat.release': ['น้ำยาถอดแบบ', 'ថ្នាំដោះពុម្ព', 'မှိုခွာဆေး'],
+  'cat.carbon':  ['ผ้าคาร์บอน', 'ក្រណាត់កាបូន', 'ကာဗွန်အထည်'],
+  'cat.putty':   ['สีโป๊ว', 'ថ្នាំបិទ', 'ဖာဆေး'],
+  'cat.paint':   ['สี/แล็คเกอร์', 'ថ្នាំពណ៌/ឡាក់', 'ဆေး/လက်ကာ'],
   'cat.other':   ['อื่นๆ', 'ផ្សេងៗ', 'အခြား'],
   'due.done':    ['ครบแล้ว', 'គ្រប់ហើយ', 'ပြည့်ပြီ'],
   'due.late':    ['เลยกำหนด {n} วัน', 'ហួសកំណត់ {n} ថ្ងៃ', 'သတ်မှတ်ရက် {n} ရက်ကျော်'],
@@ -484,6 +540,7 @@ const I18N = {
   'piece.cancel':    ['ยกเลิกการเริ่ม (กดผิด)', 'បោះបង់ (ចុចខុស)', 'ပယ်ဖျက် (မှားနှိပ်မိ)'],
   'piece.allDone':   ['ทุกขั้นตอนเสร็จแล้ว', 'គ្រប់ដំណាក់កាលរួចរាល់', 'အဆင့်အားလုံး ပြီးပါပြီ'],
   'piece.awaitQC':   ['รอ QC ขั้นสุดท้าย', 'រង់ចាំ QC ចុងក្រោយ', 'နောက်ဆုံး QC စောင့်'],
+  'piece.qcThenWrap':['ผ่าน QC แล้วจึงห่องานได้', 'ឆ្លង QC រួចទើបវេចខ្ចប់បាន', 'QC အောင်ပြီးမှ ထုပ်ပိုးနိုင်သည်'],
   'piece.recordQC':  ['บันทึก QC', 'កត់ត្រា QC', 'QC မှတ်တမ်းတင်'],
   'piece.ready':     ['เสร็จ พร้อมส่ง', 'រួចរាល់ ត្រៀមដឹក', 'ပြီးပြီ၊ ပို့ရန်အသင့်'],
   'piece.passedAt':  ['ผ่าน QC เมื่อ {t}', 'ឆ្លង QC នៅ {t}', 'QC အောင် {t}'],
@@ -642,12 +699,40 @@ function workerRate(id){ const w = M.worker[id]; return w && num(w.hourly_rate) 
 const wName = id => M.worker[id]?.name || '–';
 const stepName = k => STEPS[k] ? tr('step.'+k) : k;
 const stepHint = k => STEPS[k] ? tr('hint.'+k) : '';
-const stepLabel = s => STEPS[s] ? STEPS[s].no+' '+stepName(s) : s;
+// เลขข้อ: เส้นทาง A/B ใช้เลขเดิม (5.1, 5.2) · งานเรือนับตามลำดับในเส้นทางของชิ้นนั้น (ไม่มีประกบ = ไม่นับ)
+function stepNo(k, p){
+  if(!p || !routeDef(p.route).boat) return STEPS[k]?.no || '';
+  const i = pieceSteps(p).indexOf(k); return i < 0 ? '' : String(i + 1);
+}
+const stepLabel = (s, p) => { if(!STEPS[s]) return s; const n = p ? stepNo(s, p) : ''; return (n ? n+' ' : '') + stepName(s) };
+const stepNoBadge = (k, p) => { const n = stepNo(k, p); return n ? `<span class="stepno">${n}</span>` : '' };
+const routesUsing = k => ROUTE_KEYS.filter(r => ROUTE_DEF[r].steps.includes(k));
+// เส้นทาง/ขั้นที่ใช้อยู่จริง (จากสินค้าที่เปิดใช้และชิ้นงาน) · ร้านที่ทำแต่งานรถจะไม่เห็นขั้นของงานเรือ
+function routesInUse(){
+  const r = new Set();
+  for(const p of S.data.products || []) if(p.active !== false) r.add(p.default_route);
+  for(const p of S.data.pieces || []) if(!p.scrapped) r.add(p.route);
+  return r.size ? r : new Set(ROUTE_KEYS);
+}
+function stepsInUse(){
+  const k = new Set(); for(const r of routesInUse()) routeDef(r).steps.forEach(x => k.add(x));
+  return STEP_ORDER.filter(x => k.has(x));
+}
+// เลขข้อบนปุ่มเลือกขั้น (ไม่มีชิ้นงานกำกับ): แสดงเฉพาะเมื่อขั้นนั้นใช้แต่ในเส้นทาง A/B
+function barNo(k, inUse){ const rs = routesUsing(k).filter(r => inUse.has(r)); return rs.length && rs.every(r => !ROUTE_DEF[r].boat) ? (STEPS[k].no || '') : '' }
+function routeTag(k, inUse){
+  const rs = routesUsing(k).filter(r => inUse.has(r));
+  if(rs.length >= inUse.size) return '';
+  const boats = [...inUse].filter(r => ROUTE_DEF[r]?.boat);
+  if(boats.length && rs.length===boats.length && rs.every(r => ROUTE_DEF[r].boat)) return tr('onlyBoat');
+  return tr('onlyRoute', {r: rs.join(' · ')});
+}
 const roleName = r => r ? tr('role.'+r) : '';
 const catName = c => tr('cat.'+c);
 const unitName = u => I18N['unit.'+u] ? tr('unit.'+u) : u;
 const routeName = r => tr('route.'+r);
-const qcPointName = k => I18N['qcpt.'+k] ? tr('qcpt.'+k) : '';
+const qcKind = (k, route) => { const d = routeDef(route); return k===d.qcMid ? 'mid' : k===d.qcFinal ? 'final' : null };
+const qcPointName = (k, route) => { const kd = qcKind(k, route); return kd ? tr('qcpt.'+kd) : '' };
 const defectName = d => { const i = DEFECTS.indexOf(d); return i < 0 ? (d || '') : tr('defect.'+i) };
 // ชื่อขั้นตอนภาษาไทยตัวเล็กใต้ชื่อที่แปล ช่างคุยกับหัวหน้าคนไทยได้ตรงกัน
 const thSub = k => S.lang==='th' || !STEPS[k] ? '' : `<span class="th-sub" lang="th">${STEPS[k].name}</span>`;
@@ -664,7 +749,7 @@ const canEditMaster = () => S.mode==='demo' || S.deviceRole==='manager';
 /* =====================================================================
    DATA LAYER  — โหมดทดลอง (localStorage) และ Supabase ใช้โครงสร้างเดียวกัน
    ===================================================================== */
-const DEMO_KEY = 'marshal-infusion-demo-v3';
+const DEMO_KEY = 'marshal-infusion-demo-v4';
 function demoSave(){ try { localStorage.setItem(DEMO_KEY, JSON.stringify(S.data)) } catch(e){ toast('พื้นที่เก็บข้อมูลของเบราว์เซอร์เต็ม ลองลบรูปบางส่วน', 'bad') } }
 function demoLoad(){ try { const j = localStorage.getItem(DEMO_KEY); return j ? JSON.parse(j) : null } catch(e){ return null } }
 
@@ -804,26 +889,30 @@ function allocateWork(logs){
 function computeState(p){
   const logs = (M.logsByPiece[p.id]||[]).slice().sort((a,b) => a.started_at < b.started_at ? -1 : 1);
   const qcs = (M.qcByPiece[p.id]||[]).slice().sort((a,b) => a.created_at < b.created_at ? -1 : 1);
-  const route = ROUTES[p.route] || ROUTES.A;
+  const R = routeDef(p.route), route = pieceSteps(p);
   const done = new Map(); for(const l of logs) if(l.status==='done') done.set(l.step, l);
   const base = {logs, qcs, route, done, doneCount: route.filter(s => done.has(s)).length, total: route.length};
   if(p.scrapped) return {...base, status:'scrap'};
   const active = logs.find(l => l.status==='in_progress');
   if(active) return {...base, status:'working', step:active.step, log:active};
+  // QC ขั้นสุดท้าย: ต้องผ่านก่อน จึงทำขั้นหลังจากนั้น (ห่องาน) ได้ และก่อนนับว่าพร้อมส่ง
+  const fl = done.get(R.qcFinal);
+  const fq = fl ? qcs.filter(q => q.step===R.qcFinal && q.created_at >= fl.finished_at).pop() : null;
+  const passed = !!(fq && fq.result==='pass');
   const next = route.find(s => !done.has(s));
-  if(next) return {...base, status:'waiting', step:next};
-  const last = done.get('S7');
-  const fq = qcs.filter(q => q.step==='S7' && q.created_at >= last.finished_at).pop();
-  if(fq && fq.result==='pass') return {...base, status:'done', doneAt: fq.created_at};
-  return {...base, status:'qc', step:'S7'};
+  if(next && !(fl && !passed && route.indexOf(next) > route.indexOf(R.qcFinal))) return {...base, status:'waiting', step:next};
+  if(!passed) return {...base, status:'qc', step:R.qcFinal};
+  const lastLog = done.get(route[route.length-1]);
+  return {...base, status:'done', doneAt: lastLog && lastLog.finished_at > fq.created_at ? lastLog.finished_at : fq.created_at};
 }
 function qcPending(){
   const out = [];
   for(const p of S.data.pieces){
     const s = M.state[p.id]; if(s.status==='scrap') continue;
-    for(const pt of QC_POINTS){
+    const R = routeDef(p.route);
+    for(const [kind, pt] of [['mid', R.qcMid], ['final', R.qcFinal]]){
       const l = s.done.get(pt); if(!l) continue;
-      if(!s.qcs.some(q => q.step===pt && q.created_at >= l.finished_at)) out.push({piece:p, point:pt, at:l.finished_at});
+      if(!s.qcs.some(q => q.step===pt && q.created_at >= l.finished_at)) out.push({piece:p, point:pt, kind, at:l.finished_at});
     }
   }
   return out.sort((a,b) => a.at < b.at ? -1 : 1);
@@ -851,9 +940,9 @@ function logCost(l){
   let mat = 0; for(const m of l.materials||[]){ const mt = M.material[m.material_id]; if(mt) mat += num(m.qty) * num(mt.unit_cost) }
   const m = workMins(l); return {mat, labor: m/60 * workerRate(l.finished_by || l.worker_id), mins: m};
 }
-function stdCost(productId, route){
+function stdCost(productId, route, join){
   const pr = M.product[productId]; let mat = 0, m = 0;
-  for(const s of ROUTES[route]){ const sd = pr?.standard?.[s]; if(!sd) continue; m += num(sd.minutes);
+  for(const s of routeSteps(route, join ?? pr?.has_join)){ const sd = pr?.standard?.[s]; if(!sd) continue; m += num(sd.minutes);
     for(const x of sd.materials||[]){ const mt = M.material[x.material_id]; if(mt) mat += num(x.qty) * num(mt.unit_cost) } }
   return {mat, labor: m/60 * defaultRate(), mins: m};
 }
@@ -1007,7 +1096,9 @@ function pieceCard(p){
 function vFloor(){
   const counts = {}; for(const k of STEP_ORDER) counts[k] = {w:0, q:0};
   for(const p of S.data.pieces){ const s = M.state[p.id]; if(s.status==='working') counts[s.step].w++; else if(s.status==='waiting') counts[s.step].q++ }
-  const step = S.stationStep, st = STEPS[step];
+  const step = STEPS[S.stationStep] ? S.stationStep : 'S1', inUse = routesInUse();
+  const used = new Set(stepsInUse()), bar = STEP_ORDER.filter(k => used.has(k) || k===step);
+  const no = barNo(step, inUse), noB = no ? `<span class="stepno">${no}</span>` : '';
   const dueKey = p => M.order[p.order_id]?.due_date || '9999';
   const here = S.data.pieces.filter(p => M.state[p.id].step===step);
   const working = here.filter(p => M.state[p.id].status==='working').sort((a,b) => M.state[a.id].log.started_at < M.state[b.id].log.started_at ? -1 : 1);
@@ -1019,17 +1110,17 @@ function vFloor(){
     <button class="btn" data-act="myWork">${tr('floor.myWork')}</button>
   </div>
   <div class="stepbar-wrap"><div class="stepbar" role="group" aria-label="${tr('floor.pickStep')}">
-    ${STEP_ORDER.map(k => `<button class="stepbtn" data-act="pickStep" data-v="${k}" aria-pressed="${k===step}">
-      <span class="no">${STEPS[k].no}</span><span class="nm">${stepName(k)}${thSub(k)}</span>
-      ${STEPS[k].route ? `<span class="rt">${tr('onlyRoute', {r:STEPS[k].route})}</span>` : ''}
-      <span class="cnt"><b>${counts[k].w}</b> ${tr('floor.working')} · <b>${counts[k].q}</b> ${tr('floor.waiting')}</span></button>`).join('')}
+    ${bar.map(k => { const n = barNo(k, inUse), tg = routeTag(k, inUse); return `<button class="stepbtn" data-act="pickStep" data-v="${k}" aria-pressed="${k===step}">
+      ${n ? `<span class="no">${n}</span>` : ''}<span class="nm">${stepName(k)}${thSub(k)}</span>
+      ${tg ? `<span class="rt">${tg}</span>` : ''}
+      <span class="cnt"><b>${counts[k].w}</b> ${tr('floor.working')} · <b>${counts[k].q}</b> ${tr('floor.waiting')}</span></button>` }).join('')}
   </div></div>
   ${!working.length && !waiting.length ? `<section class="section" id="queue">
-    <div class="sec-head"><h2><span class="stepno">${st.no}</span>${stepName(step)}</h2><span class="muted">${stepHint(step)}</span></div>
+    <div class="sec-head"><h2>${noB}${stepName(step)}</h2><span class="muted">${stepHint(step)}</span></div>
     ${emptyStepHint(step, counts)}
   </section>` : `
   <section class="section" id="queue">
-    <div class="sec-head"><h2><span class="stepno">${st.no}</span>${stepName(step)} · ${tr('floor.working')}<span class="count">${pcs(working.length)}</span></h2><span class="muted">${stepHint(step)}</span></div>
+    <div class="sec-head"><h2>${noB}${stepName(step)} · ${tr('floor.working')}<span class="count">${pcs(working.length)}</span></h2><span class="muted">${stepHint(step)}</span></div>
     ${working.length ? `<div class="cards">${working.map(pieceCard).join('')}</div>` : `<div class="empty">${tr('floor.nobody')}</div>`}
   </section>
   <section class="section">
@@ -1039,8 +1130,8 @@ function vFloor(){
 }
 function emptyStepHint(step, counts){
   const where = STEP_ORDER.filter(k => k!==step && (counts[k].w + counts[k].q) > 0)
-    .map(k => `<button class="chip chip-btn" data-act="pickStep" data-v="${k}">${STEPS[k].no} ${stepName(k)} · ${tr('floor.pcs', {n:counts[k].w + counts[k].q})}</button>`).join('');
-  const first = step==='S1';
+    .map(k => `<button class="chip chip-btn" data-act="pickStep" data-v="${k}">${stepName(k)} · ${tr('floor.pcs', {n:counts[k].w + counts[k].q})}</button>`).join('');
+  const first = FIRST_STEPS.has(step);
   return `<div class="empty-act">
     <p><b>${tr('floor.emptyTitle', {step:stepName(step)})}</b></p>
     <p>${first ? tr('floor.emptyFirst') : tr('floor.emptyNext')}</p>
@@ -1118,7 +1209,7 @@ function routeTrack(p, s){
   return `<ol class="track">${s.route.map(st => {
     const l = s.done.get(st); const cur = (s.status==='working' || s.status==='waiting') && s.step===st;
     const meta = l ? `${esc(wName(l.finished_by || l.worker_id))} · ${fMins(logMins(l))}` : (cur ? (s.status==='working' ? tr('floor.working') : tr('piece.next')) : '');
-    return `<li class="tk ${l ? 'done' : ''} ${cur ? 'cur' : ''}"><span class="tk-no">${l ? '✓ ' : ''}${STEPS[st].no}</span><span class="tk-nm">${stepName(st)}</span>${meta ? `<span class="tk-meta">${meta}</span>` : ''}</li>`;
+    return `<li class="tk ${l ? 'done' : ''} ${cur ? 'cur' : ''}"><span class="tk-no">${l ? '✓ ' : ''}${stepNo(st, p)}</span><span class="tk-nm">${stepName(st)}</span>${meta ? `<span class="tk-meta">${meta}</span>` : ''}</li>`;
   }).join('')}</ol>`;
 }
 function stdLine(p, step){
@@ -1134,7 +1225,7 @@ function shPiece(id){
   let action = '';
   if(s.status==='waiting'){
     action = `<div class="panel action"><span class="eyebrow">${tr('piece.next')}</span>
-      <h3><span class="stepno">${STEPS[s.step].no}</span>${stepName(s.step)}${thSub(s.step)}</h3><div class="ink2">${stepHint(s.step)}</div>${stdLine(p, s.step)}
+      <h3>${stepNoBadge(s.step, p)}${stepName(s.step)}${thSub(s.step)}</h3><div class="ink2">${stepHint(s.step)}</div>${stdLine(p, s.step)}
       <div><button class="btn btn-primary btn-xl" data-act="startStep" data-id="${p.id}">${tr('piece.start')}</button></div></div>`;
   } else if(s.status==='working'){
     const st = STEPS[s.step], sd = stdFor(p, s.step) || {};
@@ -1143,7 +1234,7 @@ function shPiece(id){
     const pv = (dr && dr.passes) || sd.passes || st.defPass;
     action = `<div class="panel action" data-draft="${s.log.id}"><span class="eyebrow">${tr('floor.working')}</span>
       ${dr ? `<span class="chip info" style="align-self:flex-start">${tr('piece.draft')}</span>` : ''}
-      <h3><span class="stepno">${st.no}</span>${stepName(s.step)}${thSub(s.step)}</h3>
+      <h3>${stepNoBadge(s.step, p)}${stepName(s.step)}${thSub(s.step)}</h3>
       <div class="ink2">${tr('piece.startedBy', {name:esc(wName(s.log.worker_id)), time:fDT(s.log.started_at), elapsed:`<b data-since="${s.log.started_at}">${fMins(mins(s.log.started_at, nowISO()))}</b>`})}</div>
       ${stdLine(p, s.step)}
       ${st.passes ? `<div class="field"><span class="flabel">${tr('piece.passes')}</span>${seg('passes', st.passes.map(n => [n, tr('piece.passN', {n})]), pv)}</div>` : ''}
@@ -1155,18 +1246,19 @@ function shPiece(id){
       <div class="row"><button class="btn btn-primary btn-xl" data-act="finishStep" data-id="${s.log.id}">${tr('piece.finish')}</button>
         <button class="btn btn-ghost" data-act="cancelStep" data-id="${s.log.id}">${tr('piece.cancel')}</button></div></div>`;
   } else if(s.status==='qc'){
-    action = `<div class="panel action"><span class="eyebrow">${tr('piece.allDone')}</span><h3>${tr('piece.awaitQC')}</h3>
-      <div><button class="btn btn-primary" data-act="openQC" data-id="${p.id}" data-point="S7">${tr('piece.recordQC')}</button></div></div>`;
+    const wrapLeft = s.route.indexOf(s.step) < s.route.length - 1;
+    action = `<div class="panel action"><span class="eyebrow">${wrapLeft ? tr('piece.qcThenWrap') : tr('piece.allDone')}</span><h3>${tr('piece.awaitQC')}</h3>
+      <div><button class="btn btn-primary" data-act="openQC" data-id="${p.id}" data-point="${s.step}">${tr('piece.recordQC')}</button></div></div>`;
   } else if(s.status==='done'){
     action = `<div class="panel"><span class="chip good" style="align-self:flex-start"><span class="dot"></span>${tr('piece.ready')}</span><div class="ink2">${tr('piece.passedAt', {t:fDT(s.doneAt)})}</div></div>`;
   } else {
     action = `<div class="panel"><span class="chip bad" style="align-self:flex-start"><span class="dot"></span>${tr('piece.scrap')}</span><div class="ink2">${esc(defectName(p.scrap_reason))}</div></div>`;
   }
   const events = [
-    ...s.logs.map(l => ({t:l.started_at, h:`<span class="t">${fDT(l.started_at)}</span><span class="d"><b>${esc(stepLabel(l.step))}</b> · ${esc(wName(l.finished_by || l.worker_id))}${l.finished_at ? ' · '+fMins(logMins(l)) : ''}${l.passes ? ' · '+tr('piece.passN', {n:l.passes}) : ''}
+    ...s.logs.map(l => ({t:l.started_at, h:`<span class="t">${fDT(l.started_at)}</span><span class="d"><b>${esc(stepLabel(l.step, p))}</b> · ${esc(wName(l.finished_by || l.worker_id))}${l.finished_at ? ' · '+fMins(logMins(l)) : ''}${l.passes ? ' · '+tr('piece.passN', {n:l.passes}) : ''}
         ${l.materials && l.materials.length ? `<br><span class="muted">${esc(matsText(l.materials))}</span>` : ''}${l.note ? `<br><span class="ink2">${esc(l.note)}</span>` : ''}</span>
         <span><span class="chip ${LOG_CHIP[l.status]}">${tr('st.'+l.status)}</span>${l.photo_url ? `<br><img class="thumb" src="${esc(l.photo_url)}" alt="${tr('piece.photo')}">` : ''}</span>`})),
-    ...s.qcs.map(q => ({t:q.created_at, h:`<span class="t">${fDT(q.created_at)}</span><span class="d"><b>QC ${esc(qcPointName(q.step) || stepLabel(q.step))}</b> · ${esc(wName(q.inspector_id))}${q.defect ? ' · '+esc(defectName(q.defect)) : ''}${q.rework_step ? ' · '+tr('hist.fixAt', {s:esc(stepLabel(q.rework_step))}) : ''}${q.note ? `<br><span class="ink2">${esc(q.note)}</span>` : ''}</span>
+    ...s.qcs.map(q => ({t:q.created_at, h:`<span class="t">${fDT(q.created_at)}</span><span class="d"><b>QC ${esc(qcPointName(q.step, p.route) || stepLabel(q.step, p))}</b> · ${esc(wName(q.inspector_id))}${q.defect ? ' · '+esc(defectName(q.defect)) : ''}${q.rework_step ? ' · '+tr('hist.fixAt', {s:esc(stepLabel(q.rework_step, p))}) : ''}${q.note ? `<br><span class="ink2">${esc(q.note)}</span>` : ''}</span>
         <span><span class="chip ${QC_CHIP[q.result]}">${tr('qcr.'+q.result)}</span>${q.photo_url ? `<br><img class="thumb" src="${esc(q.photo_url)}" alt="QC">` : ''}</span>`}))
   ].sort((a,b) => a.t < b.t ? 1 : -1);
   const qcBtn = rank() >= 2 && s.status!=='scrap' ? `<button class="btn btn-sm" data-act="openQC" data-id="${p.id}">${tr('piece.recordQC')}</button>` : '';
@@ -1214,17 +1306,17 @@ function vQC(){
   const defects = {}; for(const q of recent) if(q.result!=='pass' && q.defect) defects[q.defect] = (defects[q.defect]||0) + 1;
   const dmax = Math.max(1, ...Object.values(defects));
   const pass = recent.filter(q => q.result==='pass').length;
-  const group = pt => pend.filter(x => x.point===pt);
+  const group = kd => pend.filter(x => x.kind===kd);
   const qcCard = x => { const p = x.piece, pr = M.product[p.product_id], o = M.order[p.order_id];
     return `<button class="pcard" data-act="openQC" data-id="${p.id}" data-point="${x.point}"><div class="pc-top"><span class="mono">${esc(p.code)}</span>${dueChip(o?.due_date,false)}</div>
-      <div class="pc-prod">${esc(pr?.name)}</div><div class="pc-meta">${esc(o?.order_no)} · ${tr('qc.doneAt', {step:esc(stepLabel(x.point)), t:fDT(x.at)})}</div></button>` };
+      <div class="pc-prod">${esc(pr?.name)}</div><div class="pc-meta">${esc(o?.order_no)} · ${tr('qc.doneAt', {step:esc(stepLabel(x.point, p)), t:fDT(x.at)})}</div></button>` };
   return `
-  ${QC_POINTS.map(pt => `<section class="section"><div class="sec-head"><h2>${tr('qc.waitFor', {pt:qcPointName(pt)})}<span class="count">${tr('floor.pcs', {n:group(pt).length})}</span></h2></div>
-    ${group(pt).length ? `<div class="cards">${group(pt).map(qcCard).join('')}</div>` : `<div class="empty">${tr('qc.nonePending')}</div>`}</section>`).join('')}
+  ${['mid','final'].map(kd => `<section class="section"><div class="sec-head"><h2>${tr('qc.waitFor', {pt:tr('qcpt.'+kd)})}<span class="count">${tr('floor.pcs', {n:group(kd).length})}</span></h2></div>
+    ${group(kd).length ? `<div class="cards">${group(kd).map(qcCard).join('')}</div>` : `<div class="empty">${tr('qc.nonePending')}</div>`}</section>`).join('')}
   <div class="dash-grid">
     <section class="section"><div class="sec-head"><h2>${tr('qc.recent')}</h2><span class="muted">${tr('qc.passOf', {p:pass, n:recent.length})}</span></div>
       ${recent.length ? `<div class="table-wrap"><table><thead><tr><th>${tr('col.when')}</th><th>${tr('col.piece')}</th><th>${tr('col.point')}</th><th>${tr('col.result')}</th><th>${tr('col.defect')}</th><th>${tr('col.inspector')}</th></tr></thead><tbody>
-      ${recent.slice(0,40).map(q => `<tr class="click" data-act="openPiece" data-id="${q.piece_id}"><td>${fDT(q.created_at)}</td><td class="mono">${esc(M.piece[q.piece_id]?.code)}</td><td>${esc(STEPS[q.step]?.no || q.step)}</td>
+      ${recent.slice(0,40).map(q => `<tr class="click" data-act="openPiece" data-id="${q.piece_id}"><td>${fDT(q.created_at)}</td><td class="mono">${esc(M.piece[q.piece_id]?.code)}</td><td>${esc(stepLabel(q.step, M.piece[q.piece_id]))}</td>
         <td><span class="chip ${QC_CHIP[q.result]}">${tr('qcr.'+q.result)}</span></td><td>${esc(q.defect ? defectName(q.defect) : '–')}</td><td>${esc(wName(q.inspector_id))}</td></tr>`).join('')}
       </tbody></table></div>` : `<div class="empty">${tr('qc.noneRecent')}</div>`}</section>
     <section class="section"><div class="sec-head"><h2>${tr('qc.topDefects')}</h2><span class="muted">${tr('qc.30d')}</span></div>
@@ -1233,19 +1325,20 @@ function vQC(){
 }
 function shQC(pid, point){
   const p = M.piece[pid], s = M.state[pid], pr = M.product[p.product_id];
-  const pt = point || (s.status==='qc' ? 'S7' : (s.done.has('S3') && !s.done.has('S7') ? 'S3' : 'S7'));
+  const R = routeDef(p.route);
+  const pt = point || (s.status==='qc' ? R.qcFinal : (s.done.has(R.qcMid) && !s.done.has(R.qcFinal) ? R.qcMid : R.qcFinal));
   const ri = s.route.indexOf(pt);
   const reworkOpts = s.route.filter((x,i) => i <= Math.max(ri, 0) || s.done.has(x));
-  const defRework = pt==='S7' ? 'S6' : 'S4';
+  const defRework = pt===R.qcFinal ? s.route[ri-1] : null;
   return sheetHead(`QC <span class="mono">${esc(p.code)}</span>`, `${esc(pr?.name)} · ${tr('routeLabel', {r:p.route})}`) + `<div class="sheet-body">
     ${routeTrack(p, s)}
     <div class="panel action">
-      <div class="field"><label for="qc-point">${tr('col.point')}</label><select id="qc-point" class="input">${s.route.map(x => `<option value="${x}" ${x===pt ? 'selected' : ''}>${esc(stepLabel(x))}${qcPointName(x) ? ' — '+qcPointName(x) : ''}</option>`).join('')}</select></div>
+      <div class="field"><label for="qc-point">${tr('col.point')}</label><select id="qc-point" class="input">${s.route.map(x => `<option value="${x}" ${x===pt ? 'selected' : ''}>${esc(stepLabel(x, p))}${qcPointName(x, p.route) ? ' — '+qcPointName(x, p.route) : ''}</option>`).join('')}</select></div>
       <div class="field"><span class="flabel">${tr('qc.result')}</span>${seg('qcres', [['pass',tr('qcr.pass')],['rework',tr('qcr.rework')],['scrap',tr('qc.scrapBtn')]], 'pass', 'res', 'qcResChange')}</div>
       <div id="qc-more" hidden>
         <div class="field"><span class="flabel">${tr('qc.defectFound')}</span>${seg('defect', DEFECTS.map(d => [d, defectName(d)]), '', 'small')}</div>
         <div class="field" id="qc-rework-f" style="margin-top:12px"><label for="qc-rework">${tr('qc.reworkTo')}</label>
-          <select id="qc-rework" class="input">${reworkOpts.map(x => `<option value="${x}" ${x===(reworkOpts.includes(defRework) ? defRework : reworkOpts[reworkOpts.length-1]) ? 'selected' : ''}>${esc(stepLabel(x))}</option>`).join('')}</select>
+          <select id="qc-rework" class="input">${reworkOpts.map(x => `<option value="${x}" ${x===(reworkOpts.includes(defRework) ? defRework : reworkOpts[reworkOpts.length-1]) ? 'selected' : ''}>${esc(stepLabel(x, p))}</option>`).join('')}</select>
           <span class="muted" style="font-size:.85rem">${tr('qc.reworkNote')}</span></div>
         <label class="row" id="qc-replace-f" style="margin-top:12px" hidden><input type="checkbox" id="qc-replace" checked style="width:22px;height:22px"> ${tr('qc.replace')}</label>
       </div>
@@ -1277,13 +1370,22 @@ function nextOrderNo(){
   const n = S.data.orders.filter(o => o.order_no.startsWith(pre)).map(o => parseInt(o.order_no.slice(pre.length)) || 0);
   return pre + String((n.length ? Math.max(...n) : 0) + 1).padStart(3,'0');
 }
+// ตัวเลือกเส้นทาง: งานรถ A/B และงานเรือ 4 แบบ (หน้าไทยเสมอ)
+function routeOptions(sel){
+  const g = (label, keys) => `<optgroup label="${label}">${keys.map(r => `<option value="${r}" ${r===sel ? 'selected' : ''}>${r} · ${routeName(r)}</option>`).join('')}</optgroup>`;
+  return g('งานผิวทั่วไป', ['A','B']) + g('งานเรือ', ['JB','JW','CP','CF']);
+}
+function joinBox(cls, id, checked, route){
+  return `<label class="row join-f" ${routeDef(route).boat ? '' : 'hidden'} style="gap:6px;white-space:nowrap"><input type="checkbox" class="${cls}" ${id ? `id="${id}"` : ''} ${checked ? 'checked' : ''} style="width:22px;height:22px"> มีประกบชิ้นงาน</label>`;
+}
 function itemRow(){
   const prods = S.data.products.filter(p => p.active !== false);
   const first = prods[0];
   return `<div class="irow"><select class="i-prod" aria-label="สินค้า">${prods.map(p => `<option value="${p.id}">${esc(p.code)} · ${esc(p.name)}</option>`).join('')}</select>
     <input class="i-qty num" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="จำนวน">
-    <select class="i-route" aria-label="เส้นทาง"><option value="A" ${first?.default_route!=='B' ? 'selected' : ''}>A · เก็บผิว</option><option value="B" ${first?.default_route==='B' ? 'selected' : ''}>B · พ่นเรซินเจลโค้ตเพิ่ม</option></select>
-    <button type="button" class="icon-btn" data-act="delRow" aria-label="ลบรายการ">×</button></div>`;
+    <select class="i-route" aria-label="เส้นทาง">${routeOptions(first?.default_route || 'A')}</select>
+    <button type="button" class="icon-btn" data-act="delRow" aria-label="ลบรายการ">×</button>
+    ${joinBox('i-join', '', !!first?.has_join, first?.default_route || 'A')}</div>`;
 }
 function shOrderForm(){
   return sheetHead('รับออเดอร์ใหม่', 'ระบบจะสร้างรหัสชิ้นงานและ QR ให้ทุกชิ้นอัตโนมัติ') + `<div class="sheet-body"><div class="panel">
@@ -1293,7 +1395,7 @@ function shOrderForm(){
       <div class="field"><label for="o-recv">วันที่รับออเดอร์</label><input id="o-recv" type="date" class="input" value="${localDate()}"></div>
       <div class="field"><label for="o-due">กำหนดส่ง</label><input id="o-due" type="date" class="input"></div>
     </div>
-    <div class="field"><span class="flabel">รายการสินค้า · จำนวน · เส้นทางงานผิว</span><div id="o-items" class="mat-editor">${itemRow()}</div>
+    <div class="field"><span class="flabel">รายการสินค้า · จำนวน · เส้นทาง · ประกบ (งานเรือ)</span><div id="o-items" class="mat-editor">${itemRow()}</div>
       <div><button type="button" class="btn btn-sm" data-act="addItemRow">+ เพิ่มรายการ</button></div></div>
     <div class="field"><label for="o-note">หมายเหตุ</label><textarea id="o-note" class="input"></textarea></div>
     <div><button class="btn btn-primary btn-xl" data-act="saveOrder">บันทึกออเดอร์</button></div>
@@ -1303,7 +1405,7 @@ function shOrder(oid){
   const o = M.order[oid]; const st = orderStats(o);
   const ps = (M.piecesByOrder[oid]||[]).slice().sort((a,b) => a.code < b.code ? -1 : 1);
   const stTxt = p => { const s = M.state[p.id];
-    return {working:`<span class="chip info">กำลังทำ ${esc(stepLabel(s.step))}</span>`, waiting:`<span class="chip">รอ ${esc(stepLabel(s.step))}</span>`, qc:'<span class="chip warn">รอ QC</span>', done:'<span class="chip good">พร้อมส่ง</span>', scrap:'<span class="chip bad">เสีย</span>'}[s.status] };
+    return {working:`<span class="chip info">กำลังทำ ${esc(stepLabel(s.step, p))}</span>`, waiting:`<span class="chip">รอ ${esc(stepLabel(s.step, p))}</span>`, qc:'<span class="chip warn">รอ QC</span>', done:'<span class="chip good">พร้อมส่ง</span>', scrap:'<span class="chip bad">เสีย</span>'}[s.status] };
   return sheetHead(`ออเดอร์ <span class="mono">${esc(o.order_no)}</span>`, `${esc(o.customer)} · รับ ${fDate(o.received_date)} · กำหนดส่ง ${fDate(o.due_date)}`,
     `<button class="btn btn-sm" data-act="openLabels" data-id="${oid}">ป้าย QR</button>`) + `<div class="sheet-body">
     <div class="row">${dueChip(o.due_date, st.complete)}<span class="chip">เสร็จ ${st.done}/${st.target}</span>${st.scrap ? `<span class="chip bad">เสีย ${st.scrap}</span>` : ''}</div>
@@ -1381,7 +1483,7 @@ function vDash(){
   const qtyR = ordR.reduce((a,o) => a + (M.itemsByOrder[o.id]||[]).reduce((b,i) => b + num(i.qty), 0), 0);
 
   // WIP by step
-  const rows = STEP_ORDER.map(k => ({k, w: wip.filter(p => st(p).status==='working' && st(p).step===k).length, q: wip.filter(p => st(p).status==='waiting' && st(p).step===k).length}));
+  const rows = stepsInUse().map(k => ({k, w: wip.filter(p => st(p).status==='working' && st(p).step===k).length, q: wip.filter(p => st(p).status==='waiting' && st(p).step===k).length}));
   const qcN = qcPending().length;
   const wmax = Math.max(1, ...rows.map(r => r.w + r.q), qcN);
 
@@ -1402,7 +1504,7 @@ function vDash(){
   // cost per finished piece
   const costs = doneR.map(p => { let mat = 0, lab = 0, m = 0;
     for(const l of st(p).logs) if(l.status==='done' || l.status==='reworked'){ const c = logCost(l); mat += c.mat; lab += c.labor; m += c.mins }
-    const sc = stdCost(p.product_id, p.route); return {p, mat, lab, m, tot: mat+lab, std: sc.mat + sc.labor} })
+    const sc = stdCost(p.product_id, p.route, p.has_join); return {p, mat, lab, m, tot: mat+lab, std: sc.mat + sc.labor} })
     .sort((a,b) => st(a.p).doneAt < st(b.p).doneAt ? 1 : -1);
   const varCell = (act, std) => { if(!std) return '<td class="r muted">–</td>'; const v = (act/std - 1)*100; return `<td class="r num ${v > 5 ? 'var-up' : v < -5 ? 'var-dn' : ''}">${v > 0 ? '+' : ''}${fmt(v)}%</td>` };
 
@@ -1484,7 +1586,7 @@ function vSettings(){
   } else if(tab==='products'){
     body = `<div class="sec-head"><h3>สินค้าและสูตรมาตรฐาน</h3><button class="btn btn-primary" data-act="editProduct" ${ro ? 'disabled' : ''}>+ เพิ่มสินค้า</button></div>
     <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>เส้นทางปกติ</th><th class="r">เวลามาตรฐาน</th><th class="r">ต้นทุนมาตรฐาน</th></tr></thead><tbody>
-    ${S.data.products.map(p => { const sc = stdCost(p.id, p.default_route); return `<tr class="click" data-act="editProduct" data-id="${p.id}"><td class="mono">${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category || '')}</td><td>${p.default_route} · ${routeName(p.default_route)}</td><td class="r num">${fMins(sc.mins)}</td><td class="r num">${baht(sc.mat + sc.labor)}</td></tr>` }).join('')}
+    ${S.data.products.map(p => { const sc = stdCost(p.id, p.default_route); return `<tr class="click" data-act="editProduct" data-id="${p.id}"><td class="mono">${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category || '')}</td><td>${p.default_route} · ${routeName(p.default_route)}${p.has_join && routeDef(p.default_route).boat ? ' · มีประกบ' : ''}</td><td class="r num">${fMins(sc.mins)}</td><td class="r num">${baht(sc.mat + sc.labor)}</td></tr>` }).join('')}
     </tbody></table></div>`;
   } else {
     body = `<div class="panel"><div class="grid2">
@@ -1523,16 +1625,19 @@ function shMaterialForm(id){
     <div><button class="btn btn-primary btn-xl" data-act="saveMaterial" data-id="${id || ''}">บันทึก</button></div></div></div>`;
 }
 function shProductForm(id){
-  const p = id ? M.product[id] : {code:'', name:'', category:'ชิ้นส่วนรถยนต์', default_route:'A', standard:{}};
+  const p = id ? M.product[id] : {code:'', name:'', category:'ชิ้นส่วนรถยนต์', default_route:'A', has_join:false, standard:{}};
+  const showK = new Set(routeSteps(p.default_route, !!p.has_join));
   const sd = p.standard || {};
   return sheetHead(id ? 'แก้ไข '+esc(p.name) : 'เพิ่มสินค้า', 'สูตรมาตรฐานใช้เติมค่าล่วงหน้าบนหน้างาน และใช้เทียบเวลา วัสดุ และต้นทุนจริง') + `<div class="sheet-body">
     <div class="panel"><div class="grid2">
       <div class="field"><label for="p-code">รหัสสินค้า</label><input id="p-code" class="input mono" value="${esc(p.code)}"></div>
       <div class="field"><label for="p-name">ชื่อสินค้า</label><input id="p-name" class="input" value="${esc(p.name)}"></div>
       <div class="field"><label for="p-cat">ประเภท</label><input id="p-cat" class="input" value="${esc(p.category || '')}" placeholder="เรือ / ชิ้นส่วนรถยนต์"></div>
-      <div class="field"><label for="p-route">เส้นทางงานผิวปกติ</label><select id="p-route" class="input"><option value="A" ${p.default_route==='A' ? 'selected' : ''}>A · เก็บผิว</option><option value="B" ${p.default_route==='B' ? 'selected' : ''}>B · พ่นเรซินเจลโค้ตเพิ่ม</option></select></div></div></div>
+      <div class="field"><label for="p-route">เส้นทางปกติ</label><select id="p-route" class="input">${routeOptions(p.default_route)}</select>
+        ${joinBox('', 'p-join', !!p.has_join, p.default_route)}</div></div>
+      <p class="muted" style="margin:0;font-size:.88rem">แสดงเฉพาะขั้นตอนของเส้นทางที่เลือก · ค่ามาตรฐานของขั้นอื่นที่เคยกรอกไว้ยังเก็บอยู่</p></div>
     ${STEP_ORDER.map(k => { const st = STEPS[k], x = sd[k] || {};
-      return `<div class="panel"><h3><span class="stepno">${st.no}</span>${stepName(k)}${st.route ? ` <span class="muted" style="font:400 .85rem var(--f-body)">เฉพาะเส้นทาง ${st.route}</span>` : ''}</h3>
+      return `<div class="panel std-step" data-std-step="${k}" ${showK.has(k) ? '' : 'hidden'}><h3>${stepName(k)}</h3>
         <div class="grid2"><div class="field"><label for="std-min-${k}">เวลามาตรฐาน (นาที)</label><input id="std-min-${k}" class="input num" type="number" step="any" value="${x.minutes ?? ''}"></div>
         ${st.passes ? `<div class="field"><label for="std-pass-${k}">จำนวนเที่ยว</label><input id="std-pass-${k}" class="input num" type="number" min="1" max="3" value="${x.passes ?? st.defPass}"></div>` : ''}</div>
         <div class="field"><span class="flabel">${st.layers ? 'ใยแก้วแต่ละชั้น (เมตร)' : 'วัสดุมาตรฐาน'}</span>${matEditor(k, x.materials || [], 'std')}</div></div>` }).join('')}
@@ -1587,7 +1692,7 @@ const ACT = {
         if(e && e.code==='23505'){ await refreshPiece(d.id); render(); toast(tr('t.taken'), 'bad'); return }
         throw e;
       }
-      reindex(); render(); toast(tr('t.started', {name:w.name, step:stepLabel(s.step)}));
+      reindex(); render(); toast(tr('t.started', {name:w.name, step:stepLabel(s.step, M.piece[d.id])}));
     });
   },
   async finishStep(d){
@@ -1608,7 +1713,7 @@ const ACT = {
       const ok = await dbUpdateIf('step_logs', d.id, {status:'in_progress'}, {status:'done', finished_at:nowISO(), finished_by:w.id, passes, materials:mats, note, photo_url:photo});
       if(!ok) return stale();
       clearDraft(d.id);
-      reindex(); render(); toast(tr('t.finished', {step:stepLabel(l.step), m:fMins(logMins(S.data.step_logs.find(x => x.id===d.id)))}));
+      reindex(); render(); toast(tr('t.finished', {step:stepLabel(l.step, M.piece[l.piece_id]), m:fMins(logMins(S.data.step_logs.find(x => x.id===d.id)))}));
     });
   },
   async cancelStep(d){
@@ -1665,13 +1770,13 @@ const ACT = {
         await dbUpdate('pieces', p.id, {scrapped:true, scrap_reason:defect});
         if(replace){
           const n = S.data.pieces.filter(x => x.order_id===p.order_id).length;
-          const np = {id:uid(), code: p.code.replace(/-R\d+$/,'') + '-R' + (S.data.pieces.filter(x => x.code.startsWith(p.code.replace(/-R\d+$/,'') + '-R')).length + 1), order_id:p.order_id, order_item_id:p.order_item_id, product_id:p.product_id, route:p.route, seq:n+1, scrapped:false, scrap_reason:null, replaces:p.id, created_at:nowISO()};
+          const np = {id:uid(), code: p.code.replace(/-R\d+$/,'') + '-R' + (S.data.pieces.filter(x => x.code.startsWith(p.code.replace(/-R\d+$/,'') + '-R')).length + 1), order_id:p.order_id, order_item_id:p.order_item_id, product_id:p.product_id, route:p.route, has_join:!!p.has_join, seq:n+1, scrapped:false, scrap_reason:null, replaces:p.id, created_at:nowISO()};
           await dbInsert('pieces', np);
           toast(tr('t.replacement', {code:np.code}));
         }
       }
       reindex(); closeSheet(); render();
-      if(result!=='scrap') toast(result==='pass' ? tr('t.qcPass') : tr('t.reworkAt', {step:stepLabel(rework_step)}));
+      if(result!=='scrap') toast(result==='pass' ? tr('t.qcPass') : tr('t.reworkAt', {step:stepLabel(rework_step, p)}));
     });
   },
   newOrder(){ openSheet(shOrderForm) },
@@ -1680,14 +1785,15 @@ const ACT = {
       const order_no = $('#o-no').value.trim();
       if(!order_no){ toast('ใส่เลขที่ออเดอร์', 'bad'); return }
       if(S.data.orders.some(o => o.order_no===order_no)){ toast('เลขที่ออเดอร์นี้มีอยู่แล้ว', 'bad'); return }
-      const items = [...document.querySelectorAll('#o-items .irow')].map(r => ({product_id:r.querySelector('.i-prod').value, qty:parseInt(r.querySelector('.i-qty').value), route:r.querySelector('.i-route').value})).filter(i => i.product_id && i.qty > 0);
+      const items = [...document.querySelectorAll('#o-items .irow')].map(r => { const route = r.querySelector('.i-route').value;
+        return {product_id:r.querySelector('.i-prod').value, qty:parseInt(r.querySelector('.i-qty').value), route, has_join: routeDef(route).boat && !!r.querySelector('.i-join')?.checked} }).filter(i => i.product_id && i.qty > 0);
       if(!items.length){ toast('เพิ่มรายการสินค้าอย่างน้อย 1 รายการ', 'bad'); return }
       const now = nowISO();
       const o = {id:uid(), order_no, customer:$('#o-cust').value.trim() || null, received_date:$('#o-recv').value || localDate(), due_date:$('#o-due').value || null, note:$('#o-note').value.trim() || null, created_by:S.session?.worker.id || null, created_at:now};
       const its = [], ps = []; let seq = 0;
       for(const it of items){
-        const oi = {id:uid(), order_id:o.id, product_id:it.product_id, qty:it.qty, route:it.route, created_at:now}; its.push(oi);
-        for(let k = 0; k < it.qty; k++){ seq++; ps.push({id:uid(), code:`${order_no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:it.product_id, route:it.route, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:now}) }
+        const oi = {id:uid(), order_id:o.id, product_id:it.product_id, qty:it.qty, route:it.route, has_join:it.has_join, created_at:now}; its.push(oi);
+        for(let k = 0; k < it.qty; k++){ seq++; ps.push({id:uid(), code:`${order_no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:it.product_id, route:it.route, has_join:it.has_join, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:now}) }
       }
       await dbInsert('orders', o); await dbInsert('order_items', its); await dbInsert('pieces', ps);
       reindex(); render(); openSheet(shOrder, o.id); toast(`บันทึกออเดอร์ ${order_no} · ${ps.length} ชิ้น`);
@@ -1736,6 +1842,7 @@ const ACT = {
   async saveProduct(d){
     await guarded(async () => {
       const row = {code:$('#p-code').value.trim(), name:$('#p-name').value.trim(), category:$('#p-cat').value.trim() || null, default_route:$('#p-route').value};
+      row.has_join = routeDef(row.default_route).boat && !!$('#p-join')?.checked;
       if(!row.code || !row.name){ toast('ใส่รหัสและชื่อสินค้า', 'bad'); return }
       if(S.data.products.some(p => p.code===row.code && p.id!==d.id)){ toast('รหัสสินค้านี้มีอยู่แล้ว', 'bad'); return }
       const standard = {};
@@ -1754,11 +1861,17 @@ const ACT = {
   exportCSV(){
     const head = ['เริ่ม','เสร็จ','ชิ้นงาน','ออเดอร์','ลูกค้า','สินค้า','ขั้นตอน','ผู้ทำ','นาที','เที่ยว','วัสดุ','สถานะ','หมายเหตุ'];
     const rows = S.data.step_logs.slice().sort((a,b) => a.started_at < b.started_at ? -1 : 1).map(l => { const p = M.piece[l.piece_id], o = p && M.order[p.order_id];
-      return [l.started_at, l.finished_at || '', p?.code, o?.order_no, o?.customer, M.product[p?.product_id]?.name, stepLabel(l.step), wName(l.finished_by || l.worker_id), l.finished_at ? Math.round(logMins(l)) : '', l.passes || '', matsText(l.materials), l.status, l.note || ''] });
+      return [l.started_at, l.finished_at || '', p?.code, o?.order_no, o?.customer, M.product[p?.product_id]?.name, p ? stepLabel(l.step, p) : stepLabel(l.step), wName(l.finished_by || l.worker_id), l.finished_at ? Math.round(logMins(l)) : '', l.passes || '', matsText(l.materials), l.status, l.note || ''] });
     const csv = '﻿' + [head, ...rows].map(r => r.map(v => '"' + String(v ?? '').replace(/"/g,'""') + '"').join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'infusion-log-' + localDate() + '.csv'; a.click();
   }
 };
+// ฟอร์มสินค้า: เปลี่ยนเส้นทาง/ประกบ → แสดงเฉพาะช่องมาตรฐานของขั้นในเส้นทางนั้น
+function syncStdPanels(){
+  const r = $('#p-route').value, jf = $('#p-join'), show = new Set(routeSteps(r, !!jf?.checked));
+  jf.closest('.join-f').hidden = !routeDef(r).boat;
+  document.querySelectorAll('.std-step').forEach(el => el.hidden = !show.has(el.dataset.stdStep));
+}
 const ON = {
   qcResChange(v){ $('#qc-more').hidden = v==='pass'; $('#qc-rework-f').hidden = v!=='rework'; $('#qc-replace-f').hidden = v!=='scrap' },
   orderFilter(v){ S.orderFilter = v; render() },
@@ -1778,7 +1891,9 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if(t.matches('.m-mat')){ const m = M.material[t.value]; const u = t.closest('.mrow, .panel')?.querySelector('.m-unit'); if(u) u.innerHTML = unitOptions(m, m?.unit); if(t.id==='st-mat' && m) $('#st-cost').value = num(m.unit_cost) }
-  if(t.matches('.i-prod')){ const p = M.product[t.value]; const r = t.closest('.irow').querySelector('.i-route'); if(p) r.value = p.default_route }
+  if(t.matches('.i-prod')){ const p = M.product[t.value], row = t.closest('.irow'); if(p){ row.querySelector('.i-route').value = p.default_route; row.querySelector('.i-join').checked = !!p.has_join; row.querySelector('.join-f').hidden = !routeDef(p.default_route).boat } }
+  if(t.matches('.i-route')) t.closest('.irow').querySelector('.join-f').hidden = !routeDef(t.value).boat;
+  if(t.matches('#p-route') || t.matches('#p-join')) syncStdPanels();
 });
 document.addEventListener('input', e => { if(e.target.closest('[data-draft]')) saveDraft() });
 document.addEventListener('submit', e => {
@@ -1815,9 +1930,12 @@ async function seedDemo(){
   mt('FB-W600','ใยแก้วตาสาน เบอร์ 600','fiber','m',72,40); mt('FB-W800','ใยแก้วตาสาน เบอร์ 800','fiber','m',92,40); mt('FB-W1000','ใยแก้วตาสาน เบอร์ 1000','fiber','m',115,20);
   mt('RS-INF','เรซินอินฟิวชั่น','resin','kg',125,60); mt('RS-GC','เรซินเจลโค้ต','resin','kg',150,10);
   mt('CAT-MEKP','ตัวเร่ง (MEKP)','other','kg',260,1); mt('PL-C','ยาขัด หยาบ','polish','kg',480,0.5); mt('PL-F','ยาขัด ละเอียด (ลบขนแมว)','polish','kg',650,0.5);
+  mt('RL-WAX','น้ำยาถอดแบบ (แว็กซ์)','release','kg',420,1); mt('CF-PP','ผ้าคาร์บอน Prepreg 200 ก./ตร.ม.','carbon','m',980,10);
+  mt('PT-CAR','สีโป๊วรถยนต์','putty','kg',220,2); mt('PA-PRM','สีพื้นรถยนต์ 2K','paint','kg',380,2);
+  mt('PA-CLR','สีพ่นตามลูกค้าสั่ง','paint','kg',650,1); mt('PA-LQ','แล็คเกอร์ 2K','paint','kg',540,2);
   D.settings.push({key:'default_labor_rate', value:60});
   const L = (code, qty, layer) => ({material_id:MAT[code], qty, ...(layer ? {layer} : {})});
-  const PR = (code, name, category, route, standard) => { const p = {id:uid(), code, name, category, default_route:route, standard, active:true, created_at:iso(NOW-60*DAY)}; D.products.push(p); return p };
+  const PR = (code, name, category, route, standard, has_join=false) => { const p = {id:uid(), code, name, category, default_route:route, has_join, standard, active:true, created_at:iso(NOW-60*DAY)}; D.products.push(p); return p };
   const pHood = PR('P-HOOD','ฝากระโปรงหน้า','ชิ้นส่วนรถยนต์','B', {
     S1:{minutes:35, passes:2, materials:[L('GC-W',1.4), L('CAT-MEKP',0.03)]},
     S2:{minutes:80, materials:[L('FB-SV',3,1), L('FB-400',3,2), L('FB-W600',3,3), L('FB-400',3,4)]},
@@ -1836,7 +1954,21 @@ async function seedDemo(){
     S4:{minutes:150}, S5_1:{minutes:90, passes:2, materials:[L('RS-GC',4)]}, S5_2:{minutes:200},
     S6:{minutes:180, materials:[L('PL-C',0.4), L('PL-F',0.25)]}, S7:{minutes:60}});
 
-  const SW = {S1:[wGel], S2:[wLay], S3:[wInf], S4:[wGr], S5:[wGr,wPo2], S5_1:[wGel], S5_2:[wGr,wPo2], S6:[wPo,wPo2], S7:[wPo2,wPo]};
+  // งานเรือ (สินค้าเพิ่มต่อท้าย เพื่อให้ข้อมูลตัวอย่างงานรถชุดเดิมไม่เปลี่ยน)
+  const jelStd = (gc, scale) => ({R0:{minutes:15*scale, materials:[L('RL-WAX',0.05*scale)]}, S1:{minutes:40*scale, passes:2, materials:[L(gc,2.5*scale), L('CAT-MEKP',0.05*scale)]},
+    S2:{minutes:90*scale, materials:[L('FB-SV',3*scale,1), L('FB-400',3*scale,2), L('FB-W800',3*scale,3)]}, S3:{minutes:60*scale, materials:[L('RS-INF',8*scale), L('CAT-MEKP',0.12*scale)]},
+    DM:{minutes:20*scale}, S4:{minutes:45*scale}, JN:{minutes:60*scale, materials:[L('RS-INF',0.6*scale)]}, S5_1:{minutes:30*scale, passes:2, materials:[L('RS-GC',1*scale)]},
+    S5_2:{minutes:70*scale}, S6:{minutes:60*scale, materials:[L('PL-C',0.08*scale), L('PL-F',0.05*scale)]}, S7:{minutes:15*scale}, WR:{minutes:10*scale}});
+  const pTopBk = PR('B-TOP-BK','ฝาบน เรือ สีดำ','เรือ','JB', jelStd('GC-BK', 1));
+  const pWsBk = PR('B-WS-BK','ชิวหน้า เรือ สีดำ','เรือ','JB', jelStd('GC-BK', 0.6), true);
+  const pBodyW = PR('B-BODY-W','บอดี้ เรือ สีขาว','เรือ','JW', jelStd('GC-W', 2.2), true);
+  const pBodyCP = PR('B-BODY-CP','บอดี้ เรือ สีตามลูกค้า','เรือ','CP', {...jelStd('GC-W', 2.2), PT:{minutes:90, materials:[L('PT-CAR',1.2)]}, PR:{minutes:45, materials:[L('PA-PRM',1.5)]},
+    PC:{minutes:60, passes:2, materials:[L('PA-CLR',1.4)]}, LQ:{minutes:45, materials:[L('PA-LQ',1.2)]}}, true);
+  const pTopCF = PR('B-TOP-CF','ฝาบน เรือ Carbon','เรือ','CF', {R0:{minutes:15, materials:[L('RL-WAX',0.05)]}, CF1:{minutes:120, materials:[L('CF-PP',2.5,1), L('CF-PP',2.5,2), L('CF-PP',2.5,3)]},
+    CF2:{minutes:240}, DM:{minutes:20}, S4:{minutes:40}, S5_1:{minutes:30, passes:2, materials:[L('RS-GC',0.6)]}, S5_2:{minutes:60}, S6:{minutes:60, materials:[L('PL-C',0.06), L('PL-F',0.04)]}, S7:{minutes:15}, WR:{minutes:10}});
+
+  const SW = {S1:[wGel], S2:[wLay], S3:[wInf], S4:[wGr], S5:[wGr,wPo2], S5_1:[wGel], S5_2:[wGr,wPo2], S6:[wPo,wPo2], S7:[wPo2,wPo],
+    R0:[wGel], CF1:[wLay], CF2:[wInf], DM:[wInf,wGr], JN:[wGr], PT:[wGr], PR:[wGel], PC:[wGel], LQ:[wGel], WR:[wPo2,wPo]};
   const busy = {};
   const work = t => { const d = new Date(t); if(d.getDay()===0){ d.setDate(d.getDate()+1); d.setHours(8, Math.floor(rnd(0,40)), 0, 0) }
     const h = d.getHours() + d.getMinutes()/60;
@@ -1845,7 +1977,7 @@ async function seedDemo(){
     return d.getTime() };
   const qc = (p, step, t, result, extra={}) => D.qc_records.push({id:uid(), piece_id:p.id, step, inspector_id:wSup.id, result, defect:null, rework_step:null, note:null, photo_url:null, created_at:iso(t), ...extra});
   function sim(p, pr, startT, opt={}){
-    const route = ROUTES[p.route]; let i = 0, t = startT, reworked = false;
+    const route = pieceSteps(p), RD = routeDef(p.route); let i = 0, t = startT, reworked = false;
     while(i < route.length){
       const step = route[i], sd = pr.standard[step] || {minutes:30};
       t = work(t); if(t > NOW) return;
@@ -1857,15 +1989,16 @@ async function seedDemo(){
       const mats = (sd.materials||[]).map(m => ({material_id:m.material_id, qty:+(m.qty * rnd(0.93, 1.24)).toFixed(3), ...(m.layer ? {layer:m.layer} : {})}));
       D.step_logs.push({id:uid(), piece_id:p.id, step, worker_id:w.id, finished_by:w.id, started_at:iso(t), finished_at:iso(t+dur), passes:sd.passes || null, materials:mats, note:null, photo_url:null, status:'done', created_at:iso(t)});
       t += dur;
-      if(step==='S3'){ const q = work(t + rnd(1,3)*H); if(q < NOW){
-        if(opt.scrap){ qc(p, 'S3', q, 'scrap', {defect:'ใยแห้ง (dry spot)', note:'ใยแห้งเป็นวงกว้างบริเวณขอบ ซ่อมไม่ได้'}); p.scrapped = true; p.scrap_reason = 'ใยแห้ง (dry spot)'; return {scrapAt:q} }
-        qc(p, 'S3', q, 'pass') } }
-      if(step==='S7'){ const q = work(t + rnd(0.3,2)*H); if(q < NOW){
-        if(opt.rework && !reworked){ reworked = true; qc(p, 'S7', q, 'rework', {defect:'รอยขัด/ขนแมว', rework_step:'S6', note:'ยังเห็นรอยขนแมวเมื่อส่องไฟด้านข้าง'});
-          for(const l of D.step_logs) if(l.piece_id===p.id && (l.step==='S6' || l.step==='S7') && l.status==='done') l.status = 'reworked';
+      if(step===RD.qcMid){ const q = work(t + rnd(1,3)*H); if(q < NOW){
+        if(opt.scrap){ qc(p, step, q, 'scrap', {defect:'ใยแห้ง (dry spot)', note:'ใยแห้งเป็นวงกว้างบริเวณขอบ ซ่อมไม่ได้'}); p.scrapped = true; p.scrap_reason = 'ใยแห้ง (dry spot)'; return {scrapAt:q} }
+        qc(p, step, q, 'pass') } }
+      if(step===RD.qcFinal){ const q = work(t + rnd(0.3,2)*H); if(q < NOW){
+        if(opt.rework && !reworked){ reworked = true; qc(p, step, q, 'rework', {defect:'รอยขัด/ขนแมว', rework_step:'S6', note:'ยังเห็นรอยขนแมวเมื่อส่องไฟด้านข้าง'});
+          for(const l of D.step_logs) if(l.piece_id===p.id && route.indexOf(l.step) >= route.indexOf('S6') && l.status==='done') l.status = 'reworked';
           i = route.indexOf('S6'); t = q + rnd(0.5,2)*H; continue }
-        qc(p, 'S7', q, 'pass') } return }
-      t += (step==='S3' ? rnd(10,18) : step==='S1' ? rnd(1,2.5) : rnd(1.5,22)) * H;
+        qc(p, step, q, 'pass');
+        if(i < route.length - 1){ t = q + rnd(0.3,2)*H; i++; continue } } return }
+      t += ((step==='S3' || step==='CF2') ? rnd(10,18) : step==='S1' ? rnd(1,2.5) : rnd(1.5,22)) * H;
       i++;
     }
   }
@@ -1876,8 +2009,9 @@ async function seedDemo(){
     const o = {id:uid(), order_no:no, customer, received_date:localDate(rd), due_date:localDate(new Date(NOW + dueIn*DAY)), note, created_by:wSup.id, created_at:iso(Math.min(dayStart(daysAgo, 9), NOW - 40*60000))};
     D.orders.push(o); let seq = 0; const pcs = [];
     for(const [pr, qty, route] of items){
-      const oi = {id:uid(), order_id:o.id, product_id:pr.id, qty, route, created_at:o.created_at}; D.order_items.push(oi);
-      for(let k = 0; k < qty; k++){ seq++; const p = {id:uid(), code:`${no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:pr.id, route, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:o.created_at}; D.pieces.push(p); pcs.push([p, pr]) }
+      const has_join = !!(pr.has_join && routeDef(route).boat);
+      const oi = {id:uid(), order_id:o.id, product_id:pr.id, qty, route, has_join, created_at:o.created_at}; D.order_items.push(oi);
+      for(let k = 0; k < qty; k++){ seq++; const p = {id:uid(), code:`${no}-${pad(seq)}`, order_id:o.id, order_item_id:oi.id, product_id:pr.id, route, has_join, seq, scrapped:false, scrap_reason:null, replaces:null, created_at:o.created_at}; D.pieces.push(p); pcs.push([p, pr]) }
     }
     return pcs;
   };
@@ -1891,19 +2025,29 @@ async function seedDemo(){
   o3.forEach(([p, pr], i) => sim(p, pr, dayStart(5, 8) + i*0.3*DAY, {rework: i===0}));
   o4.forEach(([p, pr], i) => sim(p, pr, dayStart(0, 9) + i*0.15*DAY));
   mkOrder(0, 14, 'อู่ซ่อมสีรถ (ตัวอย่าง)', [[pSkirt, 3, 'A']], 'ออเดอร์ใหม่วันนี้ ยังไม่เริ่มงาน');
+  const b1 = mkOrder(10, 3, 'อู่เรือเจ้าพระยา (ตัวอย่าง)', [[pTopBk, 3, 'JB'], [pWsBk, 3, 'JB'], [pTopCF, 1, 'CF']]);
+  const b2 = mkOrder(7, 8, 'ท่าเรือพัทยา (ตัวอย่าง)', [[pBodyW, 2, 'JW'], [pBodyCP, 1, 'CP']], 'บอดี้สีตามลูกค้า: แดง RAL 3020');
   // ให้มีตัวอย่างงานที่ "กำลังทำ" เสมอ ไม่ว่าจะเปิดดูเวลาไหน
   const logsOf = id => D.step_logs.filter(l => l.piece_id===id);
-  const nextStep = p => { const done = new Set(logsOf(p.id).filter(l => l.status==='done').map(l => l.step)); return ROUTES[p.route].find(s => !done.has(s)) };
-  const candidates = D.pieces.filter(p => !p.scrapped && !logsOf(p.id).some(l => l.status==='in_progress') && nextStep(p) && nextStep(p)!=='S1');
+  const nextStep = p => { const done = new Set(logsOf(p.id).filter(l => l.status==='done').map(l => l.step)), route = pieceSteps(p), fin = routeDef(p.route).qcFinal;
+    const n = route.find(s => !done.has(s));
+    // ขั้นหลัง QC สุดท้าย (ห่องาน) เริ่มได้เมื่อผ่าน QC แล้วเท่านั้น
+    if(n && route.indexOf(n) > route.indexOf(fin) && !D.qc_records.some(q => q.piece_id===p.id && q.step===fin && q.result==='pass')) return null;
+    return n };
+  const candidates = D.pieces.filter(p => !p.scrapped && !logsOf(p.id).some(l => l.status==='in_progress') && nextStep(p) && !FIRST_STEPS.has(nextStep(p)));
   for(const p of candidates){
     if(D.step_logs.filter(l => l.status==='in_progress').length >= 3) break;
     const step = nextStep(p), w = SW[step].find(x => !busy[x.id]); if(!w) continue;
     busy[w.id] = 1; const t = NOW - rnd(15, 55)*60000;
     D.step_logs.push({id:uid(), piece_id:p.id, step, worker_id:w.id, finished_by:null, started_at:iso(t), finished_at:null, passes:null, materials:[], note:null, photo_url:null, status:'in_progress', created_at:iso(t)});
   }
+  // จำลองงานเรือหลังสุด เพื่อให้ข้อมูลตัวอย่างงานรถชุดเดิม (และลำดับการสุ่ม) ไม่เปลี่ยน
+  b1.forEach(([p, pr], i) => sim(p, pr, dayStart(9, 8) + i*0.5*DAY, {rework: i===1}));
+  b2.forEach(([p, pr], i) => sim(p, pr, dayStart(6, 8) + i*0.6*DAY));
   const rc = (code, qty, daysAgo, note) => D.stock_receipts.push({id:uid(), material_id:MAT[code], qty, unit_cost:D.materials.find(m => m.id===MAT[code]).unit_cost, kind:'receive', note, worker_id:wSup.id, created_at:iso(dayStart(daysAgo, 10))});
   [['GC-W',50],['GC-BK',20],['FB-SV',150],['FB-300',80],['FB-400',260],['FB-W600',120],['FB-W800',90],['FB-W1000',40],['RS-INF',200],['RS-GC',30],['CAT-MEKP',4],['PL-C',2],['PL-F',1.5]].forEach(([c,q]) => rc(c, q, 18, 'ยอดยกมา'));
   rc('RS-INF', 100, 4, 'ใบส่งของ DN-0458 (ตัวอย่าง)');
+  [['RL-WAX',3],['CF-PP',40],['PT-CAR',10],['PA-PRM',8],['PA-CLR',4],['PA-LQ',8]].forEach(([c,q]) => rc(c, q, 18, 'ยอดยกมา'));
   return D;
 }
 
